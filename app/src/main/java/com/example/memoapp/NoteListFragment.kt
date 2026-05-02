@@ -18,6 +18,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import android.os.Looper
+import android.os.Handler
+import android.text.TextWatcher
+import android.text.Editable
+import android.view.WindowManager
+import android.widget.ImageButton
+
+val dialog = NoteEditorDialogFragment()
 
 class NoteListFragment : Fragment() {
 
@@ -30,12 +38,33 @@ class NoteListFragment : Fragment() {
     private val filteredNotes = mutableListOf<Note>()
     private lateinit var adapter: NoteAdapter
 
+    private lateinit var editTitle: EditText
+    private lateinit var editContent: EditText
+    private var existingNote: Note? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var runnable: Runnable? = null
+    private var noteId: String = ""
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentNoteListBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    private var lastSavedTitle = ""
+    private var lastSavedContent = ""
+    private fun autoSave(existingNote: Note?) {
+        val title = editTitle.text.toString()
+        val content = editContent.text.toString()
+
+        if (title == lastSavedTitle && content == lastSavedContent) return
+
+        lastSavedTitle = title
+        lastSavedContent = content
+
+        saveNote(existingNote, title, content)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -58,6 +87,24 @@ class NoteListFragment : Fragment() {
         binding.fabAddNote.setOnClickListener {
             showAddEditNoteDialog(null)
         }
+    }
+    private fun setupAutoSave() {
+        val watcher = object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                runnable?.let { handler.removeCallbacks(it) }
+                runnable = Runnable {
+                    autoSave(existingNote)
+                }
+
+                handler.postDelayed(runnable!!, 1000)
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        }
+
+        editTitle.addTextChangedListener(watcher)
+        editContent.addTextChangedListener(watcher)
     }
 
     private fun setupRecyclerView() {
@@ -110,7 +157,7 @@ class NoteListFragment : Fragment() {
                     notes.addAll(snapshots.toObjects(Note::class.java))
                     // Sort by updated_at descending
                     notes.sortByDescending { it.updated_at }
-                    
+
                     // Apply current filter
                     filter(binding.searchViewNotes.query.toString())
 
@@ -122,8 +169,10 @@ class NoteListFragment : Fragment() {
     private fun showAddEditNoteDialog(note: Note?) {
         val builder = AlertDialog.Builder(requireContext())
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_edit_note, null)
-        val editTitle = dialogView.findViewById<EditText>(R.id.edit_note_title)
-        val editContent = dialogView.findViewById<EditText>(R.id.edit_note_content)
+        editTitle = dialogView.findViewById(R.id.edit_note_title)
+        editContent = dialogView.findViewById(R.id.edit_note_content)
+        existingNote = note
+        noteId = note?.id ?: db.collection("notes").document().id
 
         note?.let {
             editTitle.setText(it.title)
@@ -134,20 +183,41 @@ class NoteListFragment : Fragment() {
             }
         } ?: builder.setTitle("New Note")
 
-        builder.setView(dialogView)
+        val dialog = builder.setView(dialogView)
             .setPositiveButton("Save") { _, _ ->
                 val title = editTitle.text.toString()
                 val content = editContent.text.toString()
-                saveNote(note, title, content)
+                saveNote(existingNote, title, content)
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+
+        val btnExpand = dialogView.findViewById<ImageButton>(R.id.btn_expand_full)
+
+        btnExpand.setOnClickListener {
+            // ダイアログのウィンドウを取得
+            dialog.window?.let { window ->
+                // 全画面（MATCH_PARENT）に設定
+                val layoutParams = window.attributes
+                layoutParams.width = WindowManager.LayoutParams.MATCH_PARENT
+                layoutParams.height = WindowManager.LayoutParams.MATCH_PARENT
+                window.attributes = layoutParams
+
+                // 背景（外側の余白）を消して、隅々まで表示させる
+                window.setBackgroundDrawableResource(android.R.color.white)
+            }
+
+            // ボタンを非表示にする、または「縮小」ボタンに切り替える処理
+            btnExpand.visibility = View.GONE
+        }
+
+        dialog.show()
+        setupAutoSave()
     }
 
     private fun saveNote(existingNote: Note?, title: String, content: String) {
         val userId = auth.currentUser?.uid ?: return
-        val noteId = existingNote?.id ?: db.collection("notes").document().id
-        
+
         val note = Note(
             id = noteId,
             userId = userId,
@@ -156,14 +226,17 @@ class NoteListFragment : Fragment() {
             created_at = existingNote?.created_at ?: System.currentTimeMillis().toString(),
             updated_at = System.currentTimeMillis().toString()
         )
-
         db.collection("notes").document(noteId).set(note)
-            .addOnSuccessListener {
-                Toast.makeText(requireContext(), "Saved", Toast.LENGTH_SHORT).show()
-            }
             .addOnFailureListener {
                 Toast.makeText(requireContext(), "Save failed", Toast.LENGTH_SHORT).show()
             }
+//        db.collection("notes").document(noteId).set(note)
+//            .addOnSuccessListener {
+//                Toast.makeText(requireContext(), "Saved", Toast.LENGTH_SHORT).show()
+//            }
+//            .addOnFailureListener {
+//                Toast.makeText(requireContext(), "Save failed", Toast.LENGTH_SHORT).show()
+//            }
     }
 
     private fun deleteNote(noteId: String) {

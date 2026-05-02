@@ -1,5 +1,7 @@
 package com.example.memoapp.model
 
+import java.io.Serializable
+
 data class Note(
     val id: String = "",
     val userId: String = "",
@@ -7,7 +9,7 @@ data class Note(
     val content: String = "",
     val created_at: String = "",
     val updated_at: String = ""
-)
+) : Serializable
 
 data class ConceptView(
     val id: String = "",
