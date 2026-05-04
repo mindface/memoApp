@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "task.app"
+        applicationId = "my.modular"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
