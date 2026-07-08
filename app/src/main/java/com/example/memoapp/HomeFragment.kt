@@ -41,6 +41,10 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_HomeFragment_to_ConceptFragment)
         }
 
+        binding.buttonToSymbols.setOnClickListener {
+            findNavController().navigate(R.id.action_HomeFragment_to_SymbolListFragment)
+        }
+
         binding.buttonLogout.setOnClickListener {
             auth.signOut()
             findNavController().navigate(R.id.action_HomeFragment_to_LoginFragment)

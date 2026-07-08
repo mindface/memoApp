@@ -1,5 +1,8 @@
 package com.example.memoapp
 
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.ClipData
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -14,6 +17,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.memoapp.databinding.FragmentNoteListBinding
 import com.example.memoapp.model.Note
+import com.example.memoapp.model.Symbol
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
@@ -25,8 +32,6 @@ import android.text.Editable
 import android.view.WindowManager
 import android.widget.ImageButton
 
-val dialog = NoteEditorDialogFragment()
-
 class NoteListFragment : Fragment() {
 
     private var _binding: FragmentNoteListBinding? = null
@@ -36,6 +41,7 @@ class NoteListFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
     private val notes = mutableListOf<Note>()
     private val filteredNotes = mutableListOf<Note>()
+    private val allSymbols = mutableListOf<Symbol>()
     private lateinit var adapter: NoteAdapter
 
     private lateinit var editTitle: EditText
@@ -44,6 +50,11 @@ class NoteListFragment : Fragment() {
     private val handler = Handler(Looper.getMainLooper())
     private var runnable: Runnable? = null
     private var noteId: String = ""
+
+    // Dialog state for dynamic updates
+    private var activeChipGroupTypes: ChipGroup? = null
+    private var activeChipGroupSymbols: ChipGroup? = null
+    private var activeEditSymbolSearch: TextInputEditText? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -77,11 +88,13 @@ class NoteListFragment : Fragment() {
         setupSearchView()
 
         val currentUser = auth.currentUser
+        Log.d("Firestore", "User ID: ${currentUser?.uid}")
         if (currentUser == null) {
             // Redirect to login if not authenticated (extra safety)
             Toast.makeText(requireContext(), "Please login first", Toast.LENGTH_SHORT).show()
         } else {
             fetchNotes(currentUser.uid)
+            fetchSymbols(currentUser.uid)
         }
 
         binding.fabAddNote.setOnClickListener {
@@ -151,7 +164,6 @@ class NoteListFragment : Fragment() {
                     Log.w("Firestore", "Listen failed.", e)
                     return@addSnapshotListener
                 }
-
                 if (snapshots != null) {
                     notes.clear()
                     notes.addAll(snapshots.toObjects(Note::class.java))
@@ -166,11 +178,49 @@ class NoteListFragment : Fragment() {
             }
     }
 
+    private fun fetchSymbols(userId: String) {
+        db.collection("symbols")
+            .whereEqualTo("user_id", userId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    Log.w("Firestore", "Listen failed symbols.", e)
+                    return@addSnapshotListener
+                }
+                Toast.makeText(requireContext(), "o2nViewCreated: ${snapshots}", Toast.LENGTH_SHORT).show()
+                if (snapshots != null) {
+                    val newSymbols = snapshots.toObjects(Symbol::class.java)
+                    allSymbols.clear()
+                    
+                    // IDをドキュメントから取得して補完
+                    snapshots.documents.forEachIndexed { index, doc ->
+                        if (index < newSymbols.size) {
+                            val symbol = newSymbols[index]
+                            symbol.id = doc.id
+                            allSymbols.add(symbol)
+                        }
+                    }
+                    // Sort by updated_at descending
+                    allSymbols.sortByDescending { it.updated_at }
+                    Log.d("Firestore", "Fetched symbols: ${allSymbols.size}")
+                    
+                    // Update dialog if active
+                    if (activeChipGroupTypes != null) {
+                        populateTypeChips(activeChipGroupTypes!!, activeEditSymbolSearch!!, activeChipGroupSymbols!!)
+                        refreshDialogSymbols()
+                    }
+                }
+            }
+    }
+
     private fun showAddEditNoteDialog(note: Note?) {
         val builder = AlertDialog.Builder(requireContext())
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_edit_note, null)
         editTitle = dialogView.findViewById(R.id.edit_note_title)
         editContent = dialogView.findViewById(R.id.edit_note_content)
+        val editSymbolSearch = dialogView.findViewById<TextInputEditText>(R.id.edit_symbol_search)
+        val chipGroupTypes = dialogView.findViewById<ChipGroup>(R.id.chip_group_types)
+        val chipGroupSymbols = dialogView.findViewById<ChipGroup>(R.id.chip_group_symbols)
+
         existingNote = note
         noteId = note?.id ?: db.collection("notes").document().id
 
@@ -183,6 +233,29 @@ class NoteListFragment : Fragment() {
             }
         } ?: builder.setTitle("New Note")
 
+        activeChipGroupTypes = chipGroupTypes
+        activeChipGroupSymbols = chipGroupSymbols
+        activeEditSymbolSearch = editSymbolSearch
+
+        // 1. Symbol Type (symbolType フィールド) のリストを作成
+        populateTypeChips(chipGroupTypes, editSymbolSearch, chipGroupSymbols)
+
+        chipGroupTypes.setOnCheckedStateChangeListener { group, checkedIds ->
+            refreshDialogSymbols()
+        }
+
+        // Symbol Search Logic
+        editSymbolSearch.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                refreshDialogSymbols()
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        // Initial update
+        updateSymbolChipsByFilter("", "", chipGroupSymbols)
+
         val dialog = builder.setView(dialogView)
             .setPositiveButton("Save") { _, _ ->
                 val title = editTitle.text.toString()
@@ -190,6 +263,11 @@ class NoteListFragment : Fragment() {
                 saveNote(existingNote, title, content)
             }
             .setNegativeButton("Cancel", null)
+            .setOnDismissListener {
+                activeChipGroupTypes = null
+                activeChipGroupSymbols = null
+                activeEditSymbolSearch = null
+            }
             .create()
 
         val btnExpand = dialogView.findViewById<ImageButton>(R.id.btn_expand_full)
@@ -213,6 +291,123 @@ class NoteListFragment : Fragment() {
 
         dialog.show()
         setupAutoSave()
+    }
+
+    private fun populateTypeChips(chipGroup: ChipGroup, searchEdit: TextInputEditText, symbolsChipGroup: ChipGroup) {
+        val types = allSymbols.map { it.symbolType }.filter { it.isNotEmpty() }.distinct().sorted()
+        
+        // Keep track of current selection to restore it
+        val checkedChip = chipGroup.findViewById<Chip>(chipGroup.checkedChipId)
+        val currentSelectedText = checkedChip?.text?.toString() ?: "すべて"
+
+        chipGroup.removeAllViews()
+        
+        // 「すべて」のチップを追加
+        val allChip = Chip(requireContext())
+        allChip.id = View.generateViewId()
+        allChip.text = "すべて"
+        allChip.isCheckable = true
+        allChip.isChecked = (currentSelectedText == "すべて")
+        chipGroup.addView(allChip)
+
+        // 各タイプごとのチップを追加
+        types.forEach { type ->
+            val chip = Chip(requireContext())
+            chip.id = View.generateViewId()
+            chip.text = type
+            chip.isCheckable = true
+            chip.isChecked = (currentSelectedText == type)
+            chipGroup.addView(chip)
+        }
+        
+        // Ensure at least one is checked if none was restored
+        if (chipGroup.checkedChipId == View.NO_ID) {
+            allChip.isChecked = true
+        }
+    }
+
+    private fun refreshDialogSymbols() {
+        val group = activeChipGroupTypes ?: return
+        val searchEdit = activeEditSymbolSearch ?: return
+        val symbolsGroup = activeChipGroupSymbols ?: return
+
+        val checkedId = group.checkedChipId
+        val chip = group.findViewById<Chip>(checkedId)
+        val chipText = chip?.text?.toString() ?: ""
+        val selectedType = if (chipText == "すべて") "" else chipText
+        updateSymbolChipsByFilter(selectedType, searchEdit.text.toString(), symbolsGroup)
+    }
+
+    private fun updateSymbolChipsByFilter(type: String, query: String, chipGroup: ChipGroup) {
+        chipGroup.removeAllViews()
+        Log.d("SymbolSearch", "Filtering symbols. Type: '$type', Query: '$query', TotalSymbols: ${allSymbols.size}")
+        
+        var filtered = allSymbols.asSequence()
+
+        if (type.isNotEmpty()) {
+            filtered = filtered.filter { it.symbolType == type }
+        }
+
+        if (query.isNotEmpty()) {
+            val q = query.lowercase()
+            filtered = filtered.filter { 
+                it.title.lowercase().contains(q) || 
+                it.language.lowercase().contains(q) ||
+                it.content.lowercase().contains(q)
+            }
+        }
+
+        val resultList = filtered.toList()
+        Log.d("SymbolSearch", "Filtered result size: ${resultList.size}")
+
+        if (resultList.isEmpty()) {
+            val emptyText = TextView(requireContext())
+            emptyText.text = if (allSymbols.isEmpty()) "シンボルが登録されていません" else "一致するシンボルがありません"
+            emptyText.setPadding(16, 16, 16, 16)
+            chipGroup.addView(emptyText)
+            return
+        }
+
+        for (symbol in resultList) {
+            val chip = Chip(requireContext())
+            chip.text = if (symbol.language.isNotEmpty()) "[${symbol.language}] ${symbol.title}" else symbol.title
+            
+            chip.setOnClickListener {
+                if (symbol.content.isNotEmpty()) {
+                    insertTextAtCursor(symbol.content)
+                    Toast.makeText(requireContext(), "「${symbol.title}」を挿入しました", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            chip.setOnLongClickListener {
+                if (symbol.content.isNotEmpty()) {
+                    val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("symbol_content", symbol.content)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(requireContext(), "「${symbol.title}」をコピーしました", Toast.LENGTH_SHORT).show()
+                }
+                true
+            }
+
+            chipGroup.addView(chip)
+        }
+    }
+
+    private fun updateSymbolChips(query: String, chipGroup: ChipGroup) {
+        // This is replaced by updateSymbolChipsByFilter
+    }
+
+    private fun insertTextAtCursor(textToInsert: String) {
+        val start = editContent.selectionStart
+        val end = editContent.selectionEnd
+        val originalText = editContent.text
+
+        if (start >= 0) {
+            originalText.replace(Math.min(start, end), Math.max(start, end), textToInsert)
+            editContent.setSelection(start + textToInsert.length)
+        } else {
+            editContent.append(textToInsert)
+        }
     }
 
     private fun saveNote(existingNote: Note?, title: String, content: String) {

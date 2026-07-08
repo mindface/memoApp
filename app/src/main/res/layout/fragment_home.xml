@@ -36,10 +36,21 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Concepts"
-        app:layout_constraintBottom_toTopOf="@+id/button_logout"
+        app:layout_constraintBottom_toTopOf="@+id/button_to_symbols"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/button_to_notes" />
+
+    <Button
+        android:id="@+id/button_to_symbols"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Symbols"
+        app:layout_constraintBottom_toTopOf="@+id/button_logout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button_to_concepts" />
 
     <Button
         android:id="@+id/button_logout"
@@ -51,6 +62,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_to_concepts" />
+        app:layout_constraintTop_toBottomOf="@+id/button_to_symbols" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
