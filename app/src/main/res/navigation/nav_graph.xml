@@ -27,6 +27,9 @@
             android:id="@+id/action_HomeFragment_to_ConceptFragment"
             app:destination="@id/ConceptFragment" />
         <action
+            android:id="@+id/action_HomeFragment_to_SymbolListFragment"
+            app:destination="@id/SymbolListFragment" />
+        <action
             android:id="@+id/action_HomeFragment_to_LoginFragment"
             app:destination="@id/LoginFragment"
             app:popUpTo="@id/nav_graph"
@@ -44,5 +47,11 @@
         android:name="com.example.memoapp.ConceptFragment"
         android:label="Concepts"
         tools:layout="@layout/fragment_concept" />
+
+    <fragment
+        android:id="@+id/SymbolListFragment"
+        android:name="com.example.memoapp.SymbolListFragment"
+        android:label="Symbols"
+        tools:layout="@layout/fragment_symbol_list" />
 
 </navigation>
