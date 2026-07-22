@@ -50,6 +50,8 @@ class SymbolListFragment : Fragment() {
         setupSearchView()
 
         val currentUser = auth.currentUser
+        Log.d("Firestore", "User ID: ${currentUser?.uid}")
+        
         if (currentUser == null) {
             Toast.makeText(requireContext(), "Please login first", Toast.LENGTH_SHORT).show()
         } else {
