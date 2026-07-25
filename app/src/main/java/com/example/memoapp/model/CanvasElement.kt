@@ -14,6 +14,10 @@ data class CanvasElement(
     var height: Float = 100f,
     var text: String = "",
     var color: Int = 0xFF000000.toInt(),
+    @get:PropertyName("font_size") @set:PropertyName("font_size")
+    var fontSize: Float = 60f,
+    @get:PropertyName("z_index") @set:PropertyName("z_index")
+    var zIndex: Int = 0,
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable

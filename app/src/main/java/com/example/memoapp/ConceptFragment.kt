@@ -45,7 +45,6 @@ class ConceptFragment : Fragment() {
         auth = FirebaseAuth.getInstance()
 
         setupToolbar()
-        setupColorPicker()
         setupCanvas()
         
         val currentUser = auth.currentUser
@@ -85,6 +84,73 @@ class ConceptFragment : Fragment() {
         binding.btnDeleteSelected.setOnClickListener {
             binding.canvasView.deleteSelectedElement()
         }
+        binding.btnSendToBack.setOnClickListener {
+            binding.canvasView.sendSelectedToBack()
+        }
+        binding.btnFontIncrease.setOnClickListener {
+            val selected = binding.canvasView.getSelectedElement()
+            if (selected != null && selected.type == "TEXT") {
+                selected.fontSize += 10f
+                binding.canvasView.invalidate()
+            }
+        }k
+        binding.btnFontDecrease.setOnClickListener {
+            val selected = binding.canvasView.getSelectedElement()
+            if (selected != null && selected.type == "TEXT") {
+                selected.fontSize = (selected.fontSize - 10f).coerceAtLeast(10f)
+                binding.canvasView.invalidate()
+            }
+        }
+        binding.btnPickColor.setOnClickListener {
+            showColorPickerDialog()
+        }
+        binding.btnEditText.setOnClickListener {
+            val selected = binding.canvasView.getSelectedElement()
+            if (selected != null && selected.type == "TEXT") {
+                showEditTextViewDialog(selected)
+            }
+        }
+    }
+
+    private fun showEditTextViewDialog(element: CanvasElement) {
+        val layout = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(40, 20, 40, 20)
+        }
+
+        val editTextInput = EditText(requireContext()).apply {
+            hint = "テキスト"
+            setText(element.text)
+        }
+        val editSizeInput = EditText(requireContext()).apply {
+            hint = "サイズ"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setText(element.fontSize.toInt().toString())
+        }
+
+        layout.addView(editTextInput)
+        layout.addView(editSizeInput)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("テキスト編集")
+            .setView(layout)
+            .setPositiveButton("適用") { _, _ ->
+                element.text = editTextInput.text.toString()
+                val newSize = editSizeInput.text.toString().toFloatOrNull() ?: element.fontSize
+                element.fontSize = newSize
+                
+                // サイズに合わせて枠も更新（InteractiveCanvasViewと同様の計算）
+                val paint = android.graphics.Paint()
+                paint.textSize = element.fontSize
+                val bounds = android.graphics.Rect()
+                paint.getTextBounds(element.text, 0, element.text.length, bounds)
+                element.width = bounds.width().toFloat() + 20f
+                element.height = element.fontSize + 10f
+                
+                binding.canvasView.invalidate()
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
     }
 
     private fun setMode(mode: Mode) {
@@ -118,50 +184,77 @@ class ConceptFragment : Fragment() {
         }
         
         binding.canvasView.onSelectionChangedListener = { selected ->
-            binding.btnDeleteSelected.visibility = if (selected != null) View.VISIBLE else View.GONE
-            if (selected != null) {
+            val isSelected = selected != null
+            binding.btnDeleteSelected.visibility = if (isSelected) View.VISIBLE else View.GONE
+            binding.btnSendToBack.visibility = if (isSelected) View.VISIBLE else View.GONE
+            if (isSelected) {
                 setMode(Mode.PAN_ZOOM)
             }
         }
     }
 
-    private fun setupColorPicker() {
+    private fun showColorPickerDialog() {
         val colors = listOf(
             Color.parseColor("#F44336"), // Red
             Color.parseColor("#E91E63"), // Pink
             Color.parseColor("#9C27B0"), // Purple
             Color.parseColor("#2196F3"), // Blue
+            Color.parseColor("#03A9F4"), // Light Blue
             Color.parseColor("#00BCD4"), // Cyan
+            Color.parseColor("#009688"), // Teal
             Color.parseColor("#4CAF50"), // Green
+            Color.parseColor("#8BC34A"), // Light Green
+            Color.parseColor("#CDDC39"), // Lime
             Color.parseColor("#FFEB3B"), // Yellow
+            Color.parseColor("#FFC107"), // Amber
             Color.parseColor("#FF9800"), // Orange
+            Color.parseColor("#FF5722"), // Deep Orange
             Color.parseColor("#795548"), // Brown
             Color.parseColor("#9E9E9E"), // Grey
+            Color.parseColor("#607D8B"), // Blue Grey
             Color.parseColor("#000000"), // Black
             Color.parseColor("#FFFFFF")  // White
         )
 
+        val gridLayout = android.widget.GridLayout(requireContext()).apply {
+            columnCount = 4
+            rowCount = 5
+            alignmentMode = android.widget.GridLayout.ALIGN_BOUNDS
+            setPadding(16, 16, 16, 16)
+        }
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle("Select Color")
+            .setView(gridLayout)
+            .setNegativeButton("Cancel", null)
+            .create()
+
         for (color in colors) {
             val colorView = View(requireContext()).apply {
-                val size = (36 * resources.displayMetrics.density).toInt()
-                val params = ViewGroup.MarginLayoutParams(size, size)
-                params.setMargins(8, 8, 8, 8)
+                val size = (50 * resources.displayMetrics.density).toInt()
+                val params = android.widget.GridLayout.LayoutParams().apply {
+                    width = size
+                    height = size
+                    setMargins(8, 8, 8, 8)
+                }
                 layoutParams = params
-                
                 setBackgroundColor(color)
                 elevation = 4f
                 
                 setOnClickListener {
                     selectedColor = color
                     binding.canvasView.setSelectedElementColor(color)
-                    Toast.makeText(requireContext(), "Color selected", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
                 }
             }
-            binding.colorContainer.addView(colorView)
+            gridLayout.addView(colorView)
         }
+
+        dialog.show()
     }
 
     private fun addNewElement(type: String, x: Float, y: Float, text: String = "") {
+        val maxZ = canvasElements.maxOfOrNull { it.zIndex } ?: 0
         val element = CanvasElement(
             id = db.collection("canvas_elements").document().id,
             userId = auth.currentUser?.uid ?: "",
@@ -171,7 +264,8 @@ class ConceptFragment : Fragment() {
             width = 150f,
             height = 150f,
             text = text,
-            color = if (type == "TEXT") Color.BLACK else selectedColor
+            color = if (type == "TEXT") Color.BLACK else selectedColor,
+            zIndex = maxZ + 1
         )
         canvasElements.add(element)
         binding.canvasView.setElements(canvasElements)

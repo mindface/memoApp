@@ -75,9 +75,7 @@ class InteractiveCanvasView @JvmOverloads constructor(
             val hit = elements.findLast { it.contains(cx, cy) }
             if (hit != null) {
                 selectedElement = hit
-                // Bring to front (layering)
-                elements.remove(hit)
-                elements.add(hit)
+                bringToFront(hit)
                 onSelectionChangedListener?.invoke(hit)
             } else {
                 selectedElement = null
@@ -105,7 +103,7 @@ class InteractiveCanvasView @JvmOverloads constructor(
 
     fun setElements(newElements: List<CanvasElement>) {
         elements.clear()
-        elements.addAll(newElements)
+        elements.addAll(newElements.sortedBy { it.zIndex })
         selectedElement = null
         invalidate()
     }
@@ -115,6 +113,25 @@ class InteractiveCanvasView @JvmOverloads constructor(
     fun setSelectedElementColor(color: Int) {
         selectedElement?.let {
             it.color = color
+            invalidate()
+        }
+    }
+
+    private fun bringToFront(element: CanvasElement) {
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+        if (element.zIndex <= maxZ) {
+            element.zIndex = maxZ + 1
+        }
+        elements.remove(element)
+        elements.add(element)
+    }
+
+    fun sendSelectedToBack() {
+        selectedElement?.let { element ->
+            val minZ = elements.minOfOrNull { it.zIndex } ?: 0
+            element.zIndex = minZ - 1
+            elements.remove(element)
+            elements.add(0, element)
             invalidate()
         }
     }
@@ -140,6 +157,7 @@ class InteractiveCanvasView @JvmOverloads constructor(
         canvas.save()
         canvas.concat(canvasMatrix)
 
+        // Draw in order of elements list (which should be sorted by zIndex)
         for (element in elements) {
             paint.color = element.color
             paint.style = Paint.Style.FILL
@@ -151,7 +169,8 @@ class InteractiveCanvasView @JvmOverloads constructor(
                     canvas.drawCircle(element.x + element.width / 2, element.y + element.height / 2, element.width / 2, paint)
                 }
                 "TEXT" -> {
-                    canvas.drawText(element.text, element.x, element.y + 40f, textPaint) // Offset for baseline
+                    textPaint.textSize = element.fontSize
+                    canvas.drawText(element.text, element.x, element.y + element.fontSize, textPaint) // Offset for baseline
                 }
             }
 
@@ -195,8 +214,20 @@ class InteractiveCanvasView @JvmOverloads constructor(
                 
                 if (isResizing) {
                     selectedElement?.let {
-                        it.width = (it.width + dx).coerceAtLeast(50f)
-                        it.height = (it.height + dy).coerceAtLeast(50f)
+                        if (it.type == "TEXT") {
+                            // テキストの場合は高さの変更をフォントサイズに反映し、アスペクト比を維持して枠を更新
+                            val newSize = (it.fontSize + dy).coerceAtLeast(10f)
+                            it.fontSize = newSize
+                            
+                            val bounds = Rect()
+                            textPaint.textSize = it.fontSize
+                            textPaint.getTextBounds(it.text, 0, it.text.length, bounds)
+                            it.width = bounds.width().toFloat() + 20f
+                            it.height = it.fontSize + 10f
+                        } else {
+                            it.width = (it.width + dx).coerceAtLeast(50f)
+                            it.height = (it.height + dy).coerceAtLeast(50f)
+                        }
                         invalidate()
                     }
                 } else if (isDragging) {
@@ -216,6 +247,7 @@ class InteractiveCanvasView @JvmOverloads constructor(
         }
         return true
     }
+
 
     override fun performClick(): Boolean {
         super.performClick()

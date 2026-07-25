@@ -72,27 +72,58 @@
             android:src="@android:drawable/ic_delete"
             android:visibility="gone"
             android:contentDescription="Delete Selected" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="8dp"
+            android:background="#CCCCCC" />
+
+        <ImageButton
+            android:id="@+id/btn_send_to_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:visibility="gone"
+            android:contentDescription="Send to Back" />
+
+        <ImageButton
+            android:id="@+id/btn_font_increase"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/btn_plus"
+            android:visibility="gone"
+            android:contentDescription="Increase Font Size" />
+
+        <ImageButton
+            android:id="@+id/btn_font_decrease"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/btn_minus"
+            android:visibility="gone"
+            android:contentDescription="Decrease Font Size" />
+
+        <ImageButton
+            android:id="@+id/btn_edit_text"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_edit"
+            android:visibility="gone"
+            android:contentDescription="Edit Text or Size" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="8dp"
+            android:background="#CCCCCC" />
+
+        <ImageButton
+            android:id="@+id/btn_pick_color"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_manage"
+            android:contentDescription="Select Color" />
     </LinearLayout>
-
-    <HorizontalScrollView
-        android:id="@+id/color_bar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@android:color/white"
-        android:elevation="4dp"
-        android:padding="4dp"
-        app:layout_constraintTop_toBottomOf="@id/toolbar_canvas"
-        app:layout_constraintStart_toStartOf="@id/toolbar_canvas">
-
-        <LinearLayout
-            android:id="@+id/color_container"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <!-- Colors will be added programmatically or statically -->
-        </LinearLayout>
-    </HorizontalScrollView>
 
     <TextView
         android:id="@+id/text_status"

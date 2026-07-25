@@ -64,6 +64,8 @@
                     android:id="@+id/edit_note_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
                     android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -123,6 +125,7 @@
                     android:layout_height="wrap_content"
                     android:minLines="10"
                     android:gravity="top"
+                    android:textSize="18sp"
                     android:inputType="textMultiLine" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
