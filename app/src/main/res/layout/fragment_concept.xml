@@ -91,7 +91,7 @@
             android:id="@+id/btn_font_increase"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@android:drawable/btn_plus"
+            android:src="@drawable/plus"
             android:visibility="gone"
             android:contentDescription="Increase Font Size" />
 
@@ -99,7 +99,7 @@
             android:id="@+id/btn_font_decrease"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@android:drawable/btn_minus"
+            android:src="@drawable/minus"
             android:visibility="gone"
             android:contentDescription="Decrease Font Size" />
 

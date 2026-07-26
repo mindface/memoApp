@@ -93,7 +93,7 @@ class ConceptFragment : Fragment() {
                 selected.fontSize += 10f
                 binding.canvasView.invalidate()
             }
-        }k
+        }
         binding.btnFontDecrease.setOnClickListener {
             val selected = binding.canvasView.getSelectedElement()
             if (selected != null && selected.type == "TEXT") {
