@@ -1,0 +1,67 @@
+package com.example.memoapp.ui.concept
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import com.example.memoapp.ConceptMode
+
+@Composable
+fun ConceptToolbar(
+    currentMode: ConceptMode,
+    onModeChange: (ConceptMode) -> Unit,
+    onSave: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .padding(16.dp),
+        shadowElevation = 4.dp,
+        color = Color.White,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_crop,
+                contentDescription = "Add Rectangle",
+                isSelected = currentMode == ConceptMode.ADD_RECT,
+                onClick = { onModeChange(ConceptMode.ADD_RECT) }
+            )
+            ToolbarButton(
+                iconRes = android.R.drawable.presence_online,
+                contentDescription = "Add Circle",
+                isSelected = currentMode == ConceptMode.ADD_CIRCLE,
+                onClick = { onModeChange(ConceptMode.ADD_CIRCLE) }
+            )
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_edit,
+                contentDescription = "Add Text",
+                isSelected = currentMode == ConceptMode.ADD_TEXT,
+                onClick = { onModeChange(ConceptMode.ADD_TEXT) }
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
+            Spacer(modifier = Modifier.width(8.dp))
+
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_save,
+                contentDescription = "Save Canvas",
+                onClick = onSave
+            )
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_delete,
+                contentDescription = "Clear Canvas",
+                onClick = onClear
+            )
+        }
+    }
+}
