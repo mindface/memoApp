@@ -71,10 +71,10 @@ fun ConceptBottomBar(
                     
                     // Simple text for font controls as we don't have good system icons for A+ / A-
                     Button(onClick = { onChangeFontSize(10f) }) {
-                        Text("Size +")
+                        Text("+")
                     }
                     Button(onClick = { onChangeFontSize(-10f) }) {
-                        Text("Size -")
+                        Text("-")
                     }
                 }
             }
