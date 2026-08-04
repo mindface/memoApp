@@ -2,6 +2,7 @@ package com.example.memoapp
 
 import android.graphics.Color
 import androidx.compose.runtime.mutableStateListOf
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.memoapp.model.CanvasElement
 import com.google.firebase.auth.FirebaseAuth
@@ -14,9 +15,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT }
 
-class ConceptViewModel : ViewModel() {
+class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val conceptId: String = savedStateHandle["conceptId"] ?: ""
 
     val elements = mutableStateListOf<CanvasElement>()
 
@@ -32,7 +34,7 @@ class ConceptViewModel : ViewModel() {
     init {
         val currentUser = auth.currentUser
         if (currentUser != null) {
-            fetchCanvasElements(currentUser.uid)
+            fetchCanvasElements()
         }
     }
 
@@ -58,10 +60,12 @@ class ConceptViewModel : ViewModel() {
 
     fun addElement(type: String, x: Float, y: Float, text: String = "") {
         val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
         val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
         val newElement = CanvasElement(
             id = db.collection("canvas_elements").document().id,
             userId = userId,
+            conceptId = conceptId,
             type = type,
             x = x,
             y = y,
@@ -125,9 +129,10 @@ class ConceptViewModel : ViewModel() {
         elements.addAll(sorted)
     }
 
-    private fun fetchCanvasElements(userId: String) {
+    private fun fetchCanvasElements() {
+        if (conceptId.isEmpty()) return
         db.collection("canvas_elements")
-            .whereEqualTo("user_id", userId)
+            .whereEqualTo("concept_id", conceptId)
             .get()
             .addOnSuccessListener { result ->
                 val list = result.mapNotNull { document ->
@@ -140,13 +145,19 @@ class ConceptViewModel : ViewModel() {
 
     fun saveCanvasElements() {
         val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
         val batch = db.batch()
         for (element in elements) {
             val docRef = db.collection("canvas_elements").document(element.id)
             element.userId = userId
+            element.conceptId = conceptId
             batch.set(docRef, element)
         }
         batch.commit()
+
+        // Update the concept's updatedAt timestamp
+        db.collection("concepts").document(conceptId)
+            .update("updated_at", System.currentTimeMillis())
     }
 
     fun clearCanvas() {

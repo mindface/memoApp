@@ -24,8 +24,8 @@
             android:id="@+id/action_HomeFragment_to_NoteListFragment"
             app:destination="@id/NoteListFragment" />
         <action
-            android:id="@+id/action_HomeFragment_to_ConceptFragment"
-            app:destination="@id/ConceptFragment" />
+            android:id="@+id/action_HomeFragment_to_ConceptListFragment"
+            app:destination="@id/ConceptListFragment" />
         <action
             android:id="@+id/action_HomeFragment_to_SymbolListFragment"
             app:destination="@id/SymbolListFragment" />
@@ -43,10 +43,22 @@
         tools:layout="@layout/fragment_note_list" />
 
     <fragment
+        android:id="@+id/ConceptListFragment"
+        android:name="com.example.memoapp.ConceptListFragment"
+        android:label="Concept List">
+        <action
+            android:id="@+id/action_ConceptListFragment_to_ConceptFragment"
+            app:destination="@id/ConceptFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/ConceptFragment"
         android:name="com.example.memoapp.ConceptFragment"
-        android:label="Concepts"
-        tools:layout="@layout/fragment_concept" />
+        android:label="Concepts">
+        <argument
+            android:name="conceptId"
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/SymbolListFragment"

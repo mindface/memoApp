@@ -7,6 +7,8 @@ data class CanvasElement(
     var id: String = "",
     @get:PropertyName("user_id") @set:PropertyName("user_id")
     var userId: String = "",
+    @get:PropertyName("concept_id") @set:PropertyName("concept_id")
+    var conceptId: String = "",
     var type: String = "RECTANGLE", // RECTANGLE, CIRCLE, TEXT
     var x: Float = 0f,
     var y: Float = 0f,

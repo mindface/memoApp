@@ -229,7 +229,7 @@ class NoteListFragment : Fragment() {
             editContent.setText(it.content)
             builder.setTitle("Edit Note")
             builder.setNeutralButton("Delete") { _, _ ->
-                deleteNote(it.id)
+                showDeleteConfirmationDialog(it.id)
             }
         } ?: builder.setTitle("New Note")
 
@@ -442,6 +442,17 @@ class NoteListFragment : Fragment() {
             .addOnFailureListener {
                 Toast.makeText(requireContext(), "Delete failed", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun showDeleteConfirmationDialog(noteId: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("ノートの削除")
+            .setMessage("このノートを削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                deleteNote(noteId)
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
     }
 
     inner class NoteAdapter(

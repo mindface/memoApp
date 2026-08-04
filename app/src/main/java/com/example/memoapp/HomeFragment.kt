@@ -38,7 +38,7 @@ class HomeFragment : Fragment() {
         }
 
         binding.buttonToConcepts.setOnClickListener {
-            findNavController().navigate(R.id.action_HomeFragment_to_ConceptFragment)
+            findNavController().navigate(R.id.action_HomeFragment_to_ConceptListFragment)
         }
 
         binding.buttonToSymbols.setOnClickListener {
