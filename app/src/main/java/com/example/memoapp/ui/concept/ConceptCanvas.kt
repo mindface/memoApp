@@ -26,7 +26,6 @@ import com.example.memoapp.model.CanvasElement
 fun ConceptCanvas(
     elements: List<CanvasElement>,
     selectedElement: CanvasElement?,
-    gyroOffset: Offset,
     onSelectElement: (CanvasElement?) -> Unit,
     onCanvasClick: (Float, Float) -> Unit,
     onElementUpdate: (CanvasElement) -> Unit,
@@ -39,7 +38,6 @@ fun ConceptCanvas(
     val currentOnSelectElement by rememberUpdatedState(onSelectElement)
     val currentOnCanvasClick by rememberUpdatedState(onCanvasClick)
     val currentOnElementUpdate by rememberUpdatedState(onElementUpdate)
-    val currentGyroOffset by rememberUpdatedState(gyroOffset)
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -65,7 +63,7 @@ fun ConceptCanvas(
                     
                     // キャンバス座標に変換
                     val currentScaleAtStart = if (scale > 0.001f) scale else 1f
-                    val totalOffsetAtStart = offset + currentGyroOffset
+                    val totalOffsetAtStart = offset
                     val cx = (downPos.x - totalOffsetAtStart.x) / currentScaleAtStart
                     val cy = (downPos.y - totalOffsetAtStart.y) / currentScaleAtStart
                     
@@ -143,9 +141,17 @@ fun ConceptCanvas(
                                 val newWidth = (element.width + sizeDelta.x).coerceAtLeast(50f)
                                 val newHeight = (element.height + sizeDelta.y).coerceAtLeast(50f)
                                 val updated = if (element.type == "TEXT") {
-                                    // テキストはフォントサイズと連動
+                                    // テキストはフォントサイズと連動。実際の描画サイズを計測してwidth/heightを決める
                                     val newFontSize = (element.fontSize + sizeDelta.y).coerceAtLeast(10f)
-                                    element.copy(width = newWidth, height = newHeight, fontSize = newFontSize)
+                                    val layoutResult = textMeasurer.measure(
+                                        text = element.text,
+                                        style = androidx.compose.ui.text.TextStyle(fontSize = newFontSize.sp)
+                                    )
+                                    element.copy(
+                                        fontSize = newFontSize,
+                                        width = layoutResult.size.width.toFloat(),
+                                        height = layoutResult.size.height.toFloat()
+                                    )
                                 } else {
                                     element.copy(width = newWidth, height = newHeight)
                                 }
@@ -173,7 +179,7 @@ fun ConceptCanvas(
     ) {
         // ハードウェア加速を最大限活かす DrawScope での描画
         withTransform({
-            translate(offset.x + gyroOffset.x, offset.y + gyroOffset.y)
+            translate(offset.x, offset.y)
             scale(scale, scale, Offset.Zero)
         }) {
             for (element in elements) {
@@ -185,8 +191,19 @@ fun ConceptCanvas(
                 
                 val renderX = if (isDragging) element.x + dragDelta.x else element.x
                 val renderY = if (isDragging) element.y + dragDelta.y else element.y
-                val renderW = if (isBeingResized) (element.width + sizeDelta.x).coerceAtLeast(50f) else element.width
-                val renderH = if (isBeingResized) (element.height + sizeDelta.y).coerceAtLeast(50f) else element.height
+                val renderSize = if (isBeingResized && element.type == "TEXT") {
+                    (element.fontSize + sizeDelta.y).coerceAtLeast(10f)
+                } else element.fontSize
+
+                var renderW = if (isBeingResized) (element.width + sizeDelta.x).coerceAtLeast(50f) else element.width
+                var renderH = if (isBeingResized) (element.height + sizeDelta.y).coerceAtLeast(50f) else element.height
+                
+                // テキストの場合、リサイズ中はフォントサイズに合わせて枠を再計算
+                if (element.type == "TEXT" && isBeingResized) {
+                    val layout = textMeasurer.measure(element.text, androidx.compose.ui.text.TextStyle(fontSize = renderSize.sp))
+                    renderW = layout.size.width.toFloat()
+                    renderH = layout.size.height.toFloat()
+                }
 
                 when (element.type) {
                     "RECTANGLE" -> {
@@ -204,7 +221,6 @@ fun ConceptCanvas(
                         )
                     }
                     "TEXT" -> {
-                        val renderSize = if (isBeingResized) (element.fontSize + sizeDelta.y).coerceAtLeast(10f) else element.fontSize
                         drawText(
                             textMeasurer = textMeasurer,
                             text = element.text,

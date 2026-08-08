@@ -34,12 +34,6 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     private val _selectedElement = MutableStateFlow<CanvasElement?>(null)
     val selectedElement: StateFlow<CanvasElement?> = _selectedElement.asStateFlow()
 
-    private val _isGyroEnabled = MutableStateFlow(false)
-    val isGyroEnabled: StateFlow<Boolean> = _isGyroEnabled.asStateFlow()
-
-    private val _gyroOffset = MutableStateFlow(Offset.Zero)
-    val gyroOffset: StateFlow<Offset> = _gyroOffset.asStateFlow()
-
     init {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -49,16 +43,6 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
 
     fun setMode(mode: ConceptMode) {
         _currentMode.value = mode
-    }
-
-    fun toggleGyro() {
-        _isGyroEnabled.value = !_isGyroEnabled.value
-    }
-
-    fun updateGyroOffset(deltaX: Float, deltaY: Float) {
-        if (_isGyroEnabled.value) {
-            _gyroOffset.update { it + Offset(deltaX, deltaY) }
-        }
     }
 
     fun setSelectedColor(color: Int) {
