@@ -133,10 +133,14 @@ class SymbolListFragment : Fragment() {
 
         db.collection("symbols").document(symbolId).set(symbol)
             .addOnSuccessListener {
-                Toast.makeText(requireContext(), "Symbol saved", Toast.LENGTH_SHORT).show()
+                if (isAdded) {
+                    Toast.makeText(requireContext(), "Symbol saved", Toast.LENGTH_SHORT).show()
+                }
             }
             .addOnFailureListener {
-                Toast.makeText(requireContext(), "Save failed", Toast.LENGTH_SHORT).show()
+                if (isAdded) {
+                    Toast.makeText(requireContext(), "Save failed", Toast.LENGTH_SHORT).show()
+                }
             }
     }
 
@@ -187,7 +191,7 @@ class SymbolListFragment : Fragment() {
                     return@addSnapshotListener
                 }
 
-                if (snapshots != null) {
+                if (snapshots != null && isAdded) {
                     symbols.clear()
                     symbols.addAll(snapshots.toObjects(Symbol::class.java))
                     // Sort by updated_at descending if available

@@ -27,7 +27,13 @@ class ConceptListViewModel : ViewModel() {
             .whereEqualTo("user_id", userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null || snapshot == null) return@addSnapshotListener
-                val list = snapshot.mapNotNull { it.toObject(Concept::class.java).apply { id = it.id } }
+                val list = snapshot.mapNotNull { doc ->
+                    try {
+                        doc.toObject(Concept::class.java)?.apply { id = doc.id }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
                 _concepts.value = list.sortedByDescending { it.updatedAt }
             }
     }

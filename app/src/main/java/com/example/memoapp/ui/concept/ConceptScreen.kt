@@ -23,11 +23,14 @@ fun ConceptScreen(
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
+    val isGyroEnabled by viewModel.isGyroEnabled.collectAsStateWithLifecycle()
+    val gyroOffset by viewModel.gyroOffset.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
         ConceptCanvas(
             elements = elements,
             selectedElement = selectedElement,
+            gyroOffset = gyroOffset,
             onSelectElement = { viewModel.selectElement(it) },
             onCanvasClick = { x, y ->
                 when (mode) {
@@ -42,7 +45,9 @@ fun ConceptScreen(
 
         ConceptToolbar(
             currentMode = mode,
+            isGyroEnabled = isGyroEnabled,
             onModeChange = { viewModel.setMode(it) },
+            onToggleGyro = { viewModel.toggleGyro() },
             onSave = { viewModel.saveCanvasElements() },
             onClear = { viewModel.clearCanvas() },
             modifier = Modifier.align(Alignment.TopStart)

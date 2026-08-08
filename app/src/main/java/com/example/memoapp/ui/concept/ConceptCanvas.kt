@@ -1,18 +1,24 @@
 package com.example.memoapp.ui.concept
 
-import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import com.example.memoapp.model.CanvasElement
 
@@ -20,12 +26,22 @@ import com.example.memoapp.model.CanvasElement
 fun ConceptCanvas(
     elements: List<CanvasElement>,
     selectedElement: CanvasElement?,
+    gyroOffset: Offset,
     onSelectElement: (CanvasElement?) -> Unit,
     onCanvasClick: (Float, Float) -> Unit,
     onElementUpdate: (CanvasElement) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var scale by remember { mutableStateOf(1f) }
+    // 状態の更新をジェスチャーループに伝えるための rememberUpdatedState
+    // これにより pointerInput(Unit) 内で常に最新の値を参照できる
+    val currentElements by rememberUpdatedState(elements)
+    val currentSelectedElement by rememberUpdatedState(selectedElement)
+    val currentOnSelectElement by rememberUpdatedState(onSelectElement)
+    val currentOnCanvasClick by rememberUpdatedState(onCanvasClick)
+    val currentOnElementUpdate by rememberUpdatedState(onElementUpdate)
+    val currentGyroOffset by rememberUpdatedState(gyroOffset)
+
+    var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     
     // UI用のドラッグ/リサイズ一時状態
@@ -35,62 +51,37 @@ fun ConceptCanvas(
     var isResizing by remember { mutableStateOf(false) }
     var isDraggingCanvas by remember { mutableStateOf(false) }
 
-    val textPaint = remember {
-        Paint().apply {
-            isAntiAlias = true
-            color = android.graphics.Color.BLACK
-        }
-    }
-    
-    val selectionPaint = remember {
-        android.graphics.Paint().apply {
-            isAntiAlias = true
-            color = android.graphics.Color.parseColor("#4285F4")
-            style = android.graphics.Paint.Style.STROKE
-            strokeWidth = 4f
-        }
-    }
-    
-    val handlePaint = remember {
-        android.graphics.Paint().apply {
-            isAntiAlias = true
-            color = android.graphics.Color.parseColor("#4285F4")
-            style = android.graphics.Paint.Style.FILL
-        }
-    }
-
-    val elementPaint = remember {
-        android.graphics.Paint().apply {
-            isAntiAlias = true
-            style = android.graphics.Paint.Style.FILL
-        }
-    }
+    val textMeasurer = rememberTextMeasurer()
+    val selectionColor = Color(0xFF4285F4)
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(elements, selectedElement, scale, offset) {
+            // 鍵を Unit にすることで、座標更新によるセンサーのリセットを防ぐ
+            .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val downPos = down.position
                     
                     // キャンバス座標に変換
-                    val cx = (downPos.x - size.width / 2f) / scale + size.width / 2f - offset.x / scale
-                    val cy = (downPos.y - size.height / 2f) / scale + size.height / 2f - offset.y / scale
+                    val currentScaleAtStart = if (scale > 0.001f) scale else 1f
+                    val totalOffsetAtStart = offset + currentGyroOffset
+                    val cx = (downPos.x - totalOffsetAtStart.x) / currentScaleAtStart
+                    val cy = (downPos.y - totalOffsetAtStart.y) / currentScaleAtStart
                     
-                    // ハンドルの当たり判定（選択中かつハンドル上か）
-                    val handleHit = selectedElement?.let { isOnHandle(it, cx, cy) } ?: false
-                    val bodyHit = elements.findLast { it.contains(cx, cy) }
+                    // ハンドルの当たり判定
+                    val handleHit = currentSelectedElement?.let { isOnHandle(it, cx, cy) } ?: false
+                    val bodyHit = currentElements.findLast { it.contains(cx, cy) }
                     
                     var totalDrag = Offset.Zero
-                    var isMultiTouch = false
+                    var everMultiTouch = false
                     
                     if (handleHit) {
-                        activeElementId = selectedElement?.id
+                        activeElementId = currentSelectedElement?.id
                         isResizing = true
                     } else if (bodyHit != null) {
                         activeElementId = bodyHit.id
-                        onSelectElement(bodyHit)
+                        currentOnSelectElement(bodyHit)
                     } else {
                         activeElementId = null
                         isDraggingCanvas = true
@@ -98,13 +89,24 @@ fun ConceptCanvas(
 
                     do {
                         val event = awaitPointerEvent()
-                        isMultiTouch = event.changes.size > 1
+                        val isMultiTouch = event.changes.size > 1
+                        if (isMultiTouch) everMultiTouch = true
                         
                         if (isMultiTouch) {
-                            val zoom = event.calculateZoom()
-                            val pan = event.calculatePan()
-                            scale = (scale * zoom).coerceIn(0.1f, 5f)
-                            offset += pan
+                            val zoomAmount = event.calculateZoom()
+                            val panAmount = event.calculatePan()
+                            val centroid = event.calculateCentroid(useCurrent = false)
+
+                            if (zoomAmount != 1f || panAmount != Offset.Zero) {
+                                val oldScale = scale
+                                val newScale = (oldScale * zoomAmount).coerceIn(0.1f, 5f)
+                                val scaleRatio = newScale / oldScale
+                                
+                                // 支点（指の中心）を維持したまま拡大縮小
+                                offset = centroid - (centroid - offset) * scaleRatio + panAmount
+                                scale = newScale
+                            }
+                            
                             activeElementId = null
                             isResizing = false
                         } else {
@@ -114,7 +116,15 @@ fun ConceptCanvas(
                                 totalDrag += delta
                                 
                                 if (isResizing) {
-                                    sizeDelta += Offset(delta.x / scale, delta.y / scale)
+                                    // 要素ごとの制約
+                                    val element = currentElements.find { it.id == activeElementId }
+                                    if (element?.type == "CIRCLE") {
+                                        // 円は均等リサイズ
+                                        val d = (delta.x + delta.y) / 2
+                                        sizeDelta += Offset(d / scale, d / scale)
+                                    } else {
+                                        sizeDelta += Offset(delta.x / scale, delta.y / scale)
+                                    }
                                 } else if (activeElementId != null) {
                                     dragDelta += Offset(delta.x / scale, delta.y / scale)
                                 } else if (isDraggingCanvas) {
@@ -125,35 +135,34 @@ fun ConceptCanvas(
                         }
                     } while (event.changes.fastAny { it.pressed })
 
-                    // ジェスチャー終了時の確定
+                    // 確定処理
                     if (activeElementId != null) {
-                        val element = elements.find { it.id == activeElementId }
+                        val element = currentElements.find { it.id == activeElementId }
                         if (element != null) {
                             if (isResizing && sizeDelta != Offset.Zero) {
                                 val newWidth = (element.width + sizeDelta.x).coerceAtLeast(50f)
                                 val newHeight = (element.height + sizeDelta.y).coerceAtLeast(50f)
                                 val updated = if (element.type == "TEXT") {
+                                    // テキストはフォントサイズと連動
                                     val newFontSize = (element.fontSize + sizeDelta.y).coerceAtLeast(10f)
                                     element.copy(width = newWidth, height = newHeight, fontSize = newFontSize)
                                 } else {
                                     element.copy(width = newWidth, height = newHeight)
                                 }
-                                onElementUpdate(updated)
+                                currentOnElementUpdate(updated)
                             } else if (!isResizing && dragDelta != Offset.Zero) {
-                                onElementUpdate(element.copy(x = element.x + dragDelta.x, y = element.y + dragDelta.y))
+                                currentOnElementUpdate(element.copy(x = element.x + dragDelta.x, y = element.y + dragDelta.y))
                             }
                         }
                     }
                     
-                    // タップ判定
-                    if (!isMultiTouch && !isResizing && totalDrag.getDistance() < 10f) {
+                    if (!everMultiTouch && !isResizing && totalDrag.getDistance() < 10f) {
                         if (bodyHit == null && !handleHit) {
-                            onSelectElement(null)
-                            onCanvasClick(cx, cy)
+                            currentOnSelectElement(null)
+                            currentOnCanvasClick(cx, cy)
                         }
                     }
 
-                    // クリーンアップ
                     activeElementId = null
                     dragDelta = Offset.Zero
                     sizeDelta = Offset.Zero
@@ -162,19 +171,17 @@ fun ConceptCanvas(
                 }
             }
     ) {
-        drawIntoCanvas { canvas ->
-            val nativeCanvas = canvas.nativeCanvas
-            
-            nativeCanvas.save()
-            nativeCanvas.translate(offset.x, offset.y)
-            nativeCanvas.scale(scale, scale, size.width / 2f, size.height / 2f)
-
+        // ハードウェア加速を最大限活かす DrawScope での描画
+        withTransform({
+            translate(offset.x + gyroOffset.x, offset.y + gyroOffset.y)
+            scale(scale, scale, Offset.Zero)
+        }) {
             for (element in elements) {
                 val isDragging = element.id == activeElementId && !isResizing
                 val isBeingResized = element.id == activeElementId && isResizing
                 
-                elementPaint.color = element.color
-                elementPaint.alpha = if (isDragging || isBeingResized) 180 else 255
+                val alpha = if (isDragging || isBeingResized) 0.7f else 1.0f
+                val color = Color(element.color).copy(alpha = alpha)
                 
                 val renderX = if (isDragging) element.x + dragDelta.x else element.x
                 val renderY = if (isDragging) element.y + dragDelta.y else element.y
@@ -183,32 +190,50 @@ fun ConceptCanvas(
 
                 when (element.type) {
                     "RECTANGLE" -> {
-                        nativeCanvas.drawRect(renderX, renderY, renderX + renderW, renderY + renderH, elementPaint)
+                        drawRect(
+                            color = color,
+                            topLeft = Offset(renderX, renderY),
+                            size = Size(renderW, renderH)
+                        )
                     }
                     "CIRCLE" -> {
-                        nativeCanvas.drawCircle(renderX + renderW / 2, renderY + renderH / 2, renderW / 2, elementPaint)
+                        drawCircle(
+                            color = color,
+                            center = Offset(renderX + renderW / 2, renderY + renderH / 2),
+                            radius = renderW / 2
+                        )
                     }
                     "TEXT" -> {
                         val renderSize = if (isBeingResized) (element.fontSize + sizeDelta.y).coerceAtLeast(10f) else element.fontSize
-                        textPaint.textSize = renderSize
-                        textPaint.color = element.color
-                        textPaint.alpha = if (isDragging || isBeingResized) 180 else 255
-                        nativeCanvas.drawText(element.text, renderX, renderY + renderSize, textPaint)
+                        drawText(
+                            textMeasurer = textMeasurer,
+                            text = element.text,
+                            topLeft = Offset(renderX, renderY),
+                            style = androidx.compose.ui.text.TextStyle(
+                                color = color,
+                                fontSize = renderSize.sp
+                            )
+                        )
                     }
                 }
                 
                 if (element == selectedElement) {
-                    nativeCanvas.drawRect(renderX, renderY, renderX + renderW, renderY + renderH, selectionPaint)
-                    nativeCanvas.drawRect(
-                        renderX + renderW - 20f, 
-                        renderY + renderH - 20f, 
-                        renderX + renderW + 20f, 
-                        renderY + renderH + 20f, 
-                        handlePaint
+                    val safeScale = if (scale > 0.001f) scale else 1f
+                    // 選択枠
+                    drawRect(
+                        color = selectionColor,
+                        topLeft = Offset(renderX, renderY),
+                        size = Size(renderW, renderH),
+                        style = Stroke(width = 4f / safeScale)
+                    )
+                    // リサイズハンドル
+                    drawRect(
+                        color = selectionColor,
+                        topLeft = Offset(renderX + renderW - (20f / safeScale), renderY + renderH - (20f / safeScale)),
+                        size = Size(40f / safeScale, 40f / safeScale)
                     )
                 }
             }
-            nativeCanvas.restore()
         }
     }
 }

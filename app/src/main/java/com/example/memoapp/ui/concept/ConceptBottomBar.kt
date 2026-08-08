@@ -45,7 +45,7 @@ fun ConceptBottomBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ToolbarButton(
-                    iconRes = android.R.drawable.ic_delete,
+                    iconRes = android.R.drawable.ic_menu_delete,
                     contentDescription = "Delete",
                     onClick = onDelete
                 )

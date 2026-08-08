@@ -13,7 +13,9 @@ import com.example.memoapp.ConceptMode
 @Composable
 fun ConceptToolbar(
     currentMode: ConceptMode,
+    isGyroEnabled: Boolean,
     onModeChange: (ConceptMode) -> Unit,
+    onToggleGyro: () -> Unit,
     onSave: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
@@ -36,7 +38,7 @@ fun ConceptToolbar(
                 onClick = { onModeChange(ConceptMode.ADD_RECT) }
             )
             ToolbarButton(
-                iconRes = android.R.drawable.presence_online,
+                iconRes = android.R.drawable.ic_menu_add,
                 contentDescription = "Add Circle",
                 isSelected = currentMode == ConceptMode.ADD_CIRCLE,
                 onClick = { onModeChange(ConceptMode.ADD_CIRCLE) }
@@ -61,6 +63,17 @@ fun ConceptToolbar(
                 iconRes = android.R.drawable.ic_menu_delete,
                 contentDescription = "Clear Canvas",
                 onClick = onClear
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
+            Spacer(modifier = Modifier.width(8.dp))
+
+            ToolbarButton(
+                iconRes = if (isGyroEnabled) android.R.drawable.ic_menu_compass else android.R.drawable.ic_lock_idle_lock,
+                contentDescription = "Toggle Gyro",
+                isSelected = isGyroEnabled,
+                onClick = onToggleGyro
             )
         }
     }

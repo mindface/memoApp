@@ -180,13 +180,12 @@ class NoteListFragment : Fragment() {
 
     private fun fetchSymbols(userId: String) {
         db.collection("symbols")
-            .whereEqualTo("user_id", userId)
+            .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
                     Log.w("Firestore", "Listen failed symbols.", e)
                     return@addSnapshotListener
                 }
-                Toast.makeText(requireContext(), "o2nViewCreated: ${snapshots}", Toast.LENGTH_SHORT).show()
                 if (snapshots != null) {
                     val newSymbols = snapshots.toObjects(Symbol::class.java)
                     allSymbols.clear()
@@ -204,7 +203,7 @@ class NoteListFragment : Fragment() {
                     Log.d("Firestore", "Fetched symbols: ${allSymbols.size}")
                     
                     // Update dialog if active
-                    if (activeChipGroupTypes != null) {
+                    if (isAdded && activeChipGroupTypes != null) {
                         populateTypeChips(activeChipGroupTypes!!, activeEditSymbolSearch!!, activeChipGroupSymbols!!)
                         refreshDialogSymbols()
                     }
@@ -294,6 +293,7 @@ class NoteListFragment : Fragment() {
     }
 
     private fun populateTypeChips(chipGroup: ChipGroup, searchEdit: TextInputEditText, symbolsChipGroup: ChipGroup) {
+        val currentContext = context ?: return
         val types = allSymbols.map { it.symbolType }.filter { it.isNotEmpty() }.distinct().sorted()
         
         // Keep track of current selection to restore it
@@ -303,7 +303,7 @@ class NoteListFragment : Fragment() {
         chipGroup.removeAllViews()
         
         // 「すべて」のチップを追加
-        val allChip = Chip(requireContext())
+        val allChip = Chip(currentContext)
         allChip.id = View.generateViewId()
         allChip.text = "すべて"
         allChip.isCheckable = true
@@ -312,7 +312,7 @@ class NoteListFragment : Fragment() {
 
         // 各タイプごとのチップを追加
         types.forEach { type ->
-            val chip = Chip(requireContext())
+            val chip = Chip(currentContext)
             chip.id = View.generateViewId()
             chip.text = type
             chip.isCheckable = true
@@ -339,6 +339,7 @@ class NoteListFragment : Fragment() {
     }
 
     private fun updateSymbolChipsByFilter(type: String, query: String, chipGroup: ChipGroup) {
+        val currentContext = context ?: return
         chipGroup.removeAllViews()
         Log.d("SymbolSearch", "Filtering symbols. Type: '$type', Query: '$query', TotalSymbols: ${allSymbols.size}")
         
@@ -361,7 +362,7 @@ class NoteListFragment : Fragment() {
         Log.d("SymbolSearch", "Filtered result size: ${resultList.size}")
 
         if (resultList.isEmpty()) {
-            val emptyText = TextView(requireContext())
+            val emptyText = TextView(currentContext)
             emptyText.text = if (allSymbols.isEmpty()) "シンボルが登録されていません" else "一致するシンボルがありません"
             emptyText.setPadding(16, 16, 16, 16)
             chipGroup.addView(emptyText)
@@ -369,22 +370,22 @@ class NoteListFragment : Fragment() {
         }
 
         for (symbol in resultList) {
-            val chip = Chip(requireContext())
+            val chip = Chip(currentContext)
             chip.text = if (symbol.language.isNotEmpty()) "[${symbol.language}] ${symbol.title}" else symbol.title
             
             chip.setOnClickListener {
                 if (symbol.content.isNotEmpty()) {
                     insertTextAtCursor(symbol.content)
-                    Toast.makeText(requireContext(), "「${symbol.title}」を挿入しました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(currentContext, "「${symbol.title}」を挿入しました", Toast.LENGTH_SHORT).show()
                 }
             }
 
             chip.setOnLongClickListener {
                 if (symbol.content.isNotEmpty()) {
-                    val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clipboard = currentContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("symbol_content", symbol.content)
                     clipboard.setPrimaryClip(clip)
-                    Toast.makeText(requireContext(), "「${symbol.title}」をコピーしました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(currentContext, "「${symbol.title}」をコピーしました", Toast.LENGTH_SHORT).show()
                 }
                 true
             }

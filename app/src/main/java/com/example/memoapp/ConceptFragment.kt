@@ -18,11 +18,15 @@ import com.example.memoapp.ui.concept.ConceptScreen
 class ConceptFragment : Fragment() {
 
     private val viewModel: ConceptViewModel by viewModels()
+    private lateinit var sensorManager: ConceptSensorManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        sensorManager = ConceptSensorManager(requireContext()) { dx, dy ->
+            viewModel.updateGyroOffset(dx, dy)
+        }
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -36,6 +40,16 @@ class ConceptFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sensorManager.start()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.stop()
     }
 
     private fun showEditTextViewDialog(element: CanvasElement) {
