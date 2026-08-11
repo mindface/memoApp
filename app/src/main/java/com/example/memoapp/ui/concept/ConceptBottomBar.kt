@@ -18,6 +18,7 @@ fun ConceptBottomBar(
     selectedElement: CanvasElement?,
     onDelete: () -> Unit,
     onSendToBack: () -> Unit,
+    onBringToFront: () -> Unit,
     onPickColor: () -> Unit,
     onEditSelected: () -> Unit,
     onChangeFontSize: (Float) -> Unit,
@@ -32,6 +33,7 @@ fun ConceptBottomBar(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding() // システムバーとの重なりを防止
                 .padding(16.dp),
             shadowElevation = 8.dp,
             color = Color.White,
@@ -49,11 +51,26 @@ fun ConceptBottomBar(
                     contentDescription = "Delete",
                     onClick = onDelete
                 )
-                ToolbarButton(
-                    iconRes = android.R.drawable.ic_menu_revert,
-                    contentDescription = "Send to Back",
-                    onClick = onSendToBack
-                )
+                
+                // 重なり順操作
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_revert,
+                        contentDescription = "Send to Back",
+                        onClick = onSendToBack
+                    )
+                    Text(
+                        text = "L${selectedElement?.zIndex ?: 0}",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_upload,
+                        contentDescription = "Bring to Front",
+                        onClick = onBringToFront
+                    )
+                }
+
                 ToolbarButton(
                     iconRes = android.R.drawable.ic_menu_manage,
                     contentDescription = "Color",

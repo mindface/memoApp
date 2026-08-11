@@ -24,48 +24,58 @@ fun ConceptScreen(
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
-        ConceptCanvas(
-            elements = elements,
-            selectedElement = selectedElement,
-            onSelectElement = { viewModel.selectElement(it) },
-            onCanvasClick = { x, y ->
-                when (mode) {
-                    ConceptMode.ADD_RECT -> viewModel.addElement("RECTANGLE", x, y)
-                    ConceptMode.ADD_CIRCLE -> viewModel.addElement("CIRCLE", x, y)
-                    ConceptMode.ADD_TEXT -> onShowTextDialog(x, y)
-                    ConceptMode.PAN_ZOOM -> {}
-                }
-            },
-            onElementUpdate = { viewModel.updateElement(it) }
-        )
-
-        ConceptToolbar(
-            currentMode = mode,
-            onModeChange = { viewModel.setMode(it) },
-            onSave = { viewModel.saveCanvasElements() },
-            onClear = { viewModel.clearCanvas() },
-            modifier = Modifier.align(Alignment.TopStart)
-        )
-
-        ConceptBottomBar(
-            selectedElement = selectedElement,
-            onDelete = { viewModel.deleteSelectedElement() },
-            onSendToBack = { viewModel.sendSelectedToBack() },
-            onPickColor = onShowColorPicker,
-            onEditSelected = { selectedElement?.let { onEditSelectedText(it) } },
-            onChangeFontSize = { viewModel.changeFontSize(it) },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-
-        Text(
-            text = "Mode: ${mode.name}",
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            ConceptBottomBar(
+                selectedElement = selectedElement,
+                onDelete = { viewModel.deleteSelectedElement() },
+                onSendToBack = { viewModel.sendSelectedToBack() },
+                onBringToFront = { viewModel.bringSelectedToFront() },
+                onPickColor = onShowColorPicker,
+                onEditSelected = { selectedElement?.let { onEditSelectedText(it) } },
+                onChangeFontSize = { viewModel.changeFontSize(it) }
+            )
+        }
+    ) { innerPadding ->
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.5f))
-                .padding(4.dp),
-            color = Color.White
-        )
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFFF5F5F5))
+        ) {
+            ConceptCanvas(
+                elements = elements,
+                selectedElement = selectedElement,
+                onSelectElement = { viewModel.selectElement(it) },
+                onCanvasClick = { x, y ->
+                    when (mode) {
+                        ConceptMode.ADD_RECT -> viewModel.addElement("RECTANGLE", x, y)
+                        ConceptMode.ADD_CIRCLE -> viewModel.addElement("CIRCLE", x, y)
+                        ConceptMode.ADD_TEXT -> onShowTextDialog(x, y)
+                        ConceptMode.PAN_ZOOM -> {}
+                    }
+                },
+                onElementUpdate = { viewModel.updateElement(it) }
+            )
+
+            ConceptToolbar(
+                currentMode = mode,
+                onModeChange = { viewModel.setMode(it) },
+                onSave = { viewModel.saveCanvasElements() },
+                onClear = { viewModel.clearCanvas() },
+                modifier = Modifier.align(Alignment.TopStart)
+            )
+
+            Text(
+                text = "Mode: ${mode.name}",
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(4.dp),
+                color = Color.White
+            )
+        }
     }
 }

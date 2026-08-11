@@ -100,10 +100,20 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
         }
     }
 
+    fun bringSelectedToFront() {
+        _selectedElement.value?.let { element ->
+            val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+            val updated = element.copy(zIndex = maxZ + 1)
+            updateElement(updated)
+            updateElementsList()
+        }
+    }
+
     fun sendSelectedToBack() {
         _selectedElement.value?.let { element ->
             val minZ = elements.minOfOrNull { it.zIndex } ?: 0
-            element.zIndex = minZ - 1
+            val updated = element.copy(zIndex = minZ - 1)
+            updateElement(updated)
             updateElementsList()
         }
     }
