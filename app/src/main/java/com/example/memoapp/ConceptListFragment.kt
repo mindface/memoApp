@@ -63,7 +63,10 @@ class ConceptListFragment : Fragment() {
                 val title = editText.text.toString()
                 if (title.isNotEmpty()) {
                     viewModel.createConcept(title) { conceptId ->
-                        // Optional: auto-navigate to editor after creation
+                        val bundle = Bundle().apply {
+                            putString("conceptId", conceptId)
+                        }
+                        findNavController().navigate(R.id.action_ConceptListFragment_to_ConceptFragment, bundle)
                     }
                 }
             }

@@ -8,13 +8,18 @@ import androidx.lifecycle.ViewModel
 import com.example.memoapp.model.CanvasElement
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
 
 enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT }
 
@@ -24,6 +29,7 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     private val conceptId: String = savedStateHandle["conceptId"] ?: ""
 
     val elements = mutableStateListOf<CanvasElement>()
+    private var elementsListener: ListenerRegistration? = null
 
     private val _currentMode = MutableStateFlow(ConceptMode.PAN_ZOOM)
     val currentMode: StateFlow<ConceptMode> = _currentMode.asStateFlow()
@@ -33,6 +39,9 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
 
     private val _selectedElement = MutableStateFlow<CanvasElement?>(null)
     val selectedElement: StateFlow<CanvasElement?> = _selectedElement.asStateFlow()
+
+    private val _saveResult = MutableSharedFlow<Boolean>()
+    val saveResult: SharedFlow<Boolean> = _saveResult
 
     init {
         val currentUser = auth.currentUser
@@ -143,39 +152,80 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     }
 
     private fun fetchCanvasElements() {
-        if (conceptId.isEmpty()) return
-        db.collection("canvas_elements")
+        if (conceptId.isEmpty()) {
+            Log.w("Firestore", "fetchCanvasElements: conceptId is empty")
+            return
+        }
+        
+        Log.d("Firestore", "Fetching elements for conceptId: $conceptId")
+        
+        elementsListener?.remove()
+        elementsListener = db.collection("canvas_elements")
             .whereEqualTo("concept_id", conceptId)
-            .get()
-            .addOnSuccessListener { result ->
-                val list = result.mapNotNull { document ->
-                    try {
-                        document.toObject(CanvasElement::class.java)?.apply { id = document.id }
-                    } catch (e: Exception) {
-                        Log.e("Firestore", "Error deserializing CanvasElement", e)
-                        null
-                    }
-                }.sortedBy { it.zIndex }
-                elements.clear()
-                elements.addAll(list)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    Log.e("Firestore", "Listen failed for canvas_elements", e)
+                    return@addSnapshotListener
+                }
+
+                if (snapshots != null) {
+                    Log.d("Firestore", "Snapshot received. Document count: ${snapshots.size()}")
+                    val list = snapshots.mapNotNull { document ->
+                        try {
+                            document.toObject(CanvasElement::class.java)?.apply { id = document.id }
+                        } catch (err: Exception) {
+                            Log.e("Firestore", "Error deserializing CanvasElement (ID: ${document.id})", err)
+                            null
+                        }
+                    }.sortedBy { it.zIndex }
+                    
+                    elements.clear()
+                    elements.addAll(list)
+                    Log.d("Firestore", "Elements list updated. Count: ${elements.size}")
+                }
             }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        elementsListener?.remove()
     }
 
     fun saveCanvasElements() {
         val userId = auth.currentUser?.uid ?: return
         if (conceptId.isEmpty()) return
+        
+        Log.d("Firestore", "Saving ${elements.size} elements for conceptId: $conceptId")
         val batch = db.batch()
         for (element in elements) {
-            val docRef = db.collection("canvas_elements").document(element.id)
+            // Ensure ID is not empty
+            val finalId = if (element.id.isEmpty()) db.collection("canvas_elements").document().id else element.id
+            element.id = finalId
+            
+            val docRef = db.collection("canvas_elements").document(finalId)
             element.userId = userId
             element.conceptId = conceptId
+            
+            Log.d("Firestore", "Queuing element: ${element.type} ID: $finalId")
             batch.set(docRef, element)
         }
+        
         batch.commit()
+            .addOnSuccessListener {
+                Log.d("Firestore", "Successfully saved elements")
+                viewModelScope.launch { _saveResult.emit(true) }
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Failed to save elements", e)
+                viewModelScope.launch { _saveResult.emit(false) }
+            }
 
         // Update the concept's updatedAt timestamp
         db.collection("concepts").document(conceptId)
             .update("updated_at", System.currentTimeMillis())
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Failed to update concept timestamp", e)
+            }
     }
 
     fun clearCanvas() {
