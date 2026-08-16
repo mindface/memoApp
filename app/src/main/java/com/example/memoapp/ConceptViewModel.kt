@@ -11,6 +11,14 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import android.content.ContentValues
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
+import android.os.Build
+import android.provider.MediaStore
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +28,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
+import java.io.OutputStream
 
 enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT }
 
@@ -42,6 +51,9 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
 
     private val _saveResult = MutableSharedFlow<Boolean>()
     val saveResult: SharedFlow<Boolean> = _saveResult
+
+    private val _exportResult = MutableSharedFlow<String?>()
+    val exportResult: SharedFlow<String?> = _exportResult
 
     init {
         val currentUser = auth.currentUser
@@ -232,5 +244,103 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
         elements.clear()
         _selectedElement.value = null
         _currentMode.value = ConceptMode.PAN_ZOOM
+    }
+
+    fun exportCanvasAsImage(context: Context) {
+        if (elements.isEmpty()) {
+            viewModelScope.launch { _exportResult.emit("保存する要素がありません") }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                // 1. 描画範囲の計算
+                var minX = Float.MAX_VALUE
+                var minY = Float.MAX_VALUE
+                var maxX = Float.MIN_VALUE
+                var maxY = Float.MIN_VALUE
+
+                elements.forEach {
+                    minX = minOf(minX, it.x)
+                    minY = minOf(minY, it.y)
+                    maxX = maxOf(maxX, it.x + it.width)
+                    maxY = maxOf(maxY, it.y + it.height)
+                }
+
+                // 余白の追加
+                val padding = 50f
+                val width = (maxX - minX + padding * 2).toInt()
+                val height = (maxY - minY + padding * 2).toInt()
+
+                // 2. Bitmap の作成と描画
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                canvas.drawColor(android.graphics.Color.WHITE) // 背景を白に
+
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                }
+
+                elements.forEach { element ->
+                    paint.color = element.color
+                    val rx = element.x - minX + padding
+                    val ry = element.y - minY + padding
+
+                    when (element.type) {
+                        "RECTANGLE" -> {
+                            canvas.drawRect(rx, ry, rx + element.width, ry + element.height, paint)
+                        }
+                        "CIRCLE" -> {
+                            val centerX = rx + element.width / 2
+                            val centerY = ry + element.height / 2
+                            canvas.drawCircle(centerX, centerY, element.width / 2, paint)
+                        }
+                        "TEXT" -> {
+                            paint.textSize = element.fontSize
+                            val bounds = Rect()
+                            paint.getTextBounds(element.text, 0, element.text.length, bounds)
+                            // テキストはベースラインからの描画になるため調整
+                            canvas.drawText(element.text, rx, ry - bounds.top, paint)
+                        }
+                    }
+                }
+
+                // 3. MediaStore への保存
+                val filename = "concept_${System.currentTimeMillis()}.png"
+                val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                } else {
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                }
+
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/MemoApp")
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
+                    }
+                }
+
+                val uri = context.contentResolver.insert(collection, contentValues)
+                if (uri != null) {
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        contentValues.clear()
+                        contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                        context.contentResolver.update(uri, contentValues, null, null)
+                    }
+                    _exportResult.emit("画像を保存しました: $filename")
+                } else {
+                    _exportResult.emit("保存に失敗しました")
+                }
+            } catch (e: Exception) {
+                Log.e("Export", "Error exporting image", e)
+                _exportResult.emit("エラーが発生しました: ${e.message}")
+            }
+        }
     }
 }

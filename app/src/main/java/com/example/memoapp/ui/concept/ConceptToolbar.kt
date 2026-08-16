@@ -15,6 +15,7 @@ fun ConceptToolbar(
     currentMode: ConceptMode,
     onModeChange: (ConceptMode) -> Unit,
     onSave: () -> Unit,
+    onExportImage: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -56,6 +57,11 @@ fun ConceptToolbar(
                 iconRes = android.R.drawable.ic_menu_save,
                 contentDescription = "Save Canvas",
                 onClick = onSave
+            )
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_gallery,
+                contentDescription = "Export Image",
+                onClick = onExportImage
             )
             ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_delete,

@@ -23,6 +23,22 @@ fun ConceptScreen(
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // 保存・エクスポート結果のトースト表示
+    LaunchedEffect(Unit) {
+        viewModel.saveResult.collect { success ->
+            val message = if (success) "保存完了" else "保存に失敗しました"
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.exportResult.collect { message ->
+            if (message != null) {
+                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -63,6 +79,7 @@ fun ConceptScreen(
                 currentMode = mode,
                 onModeChange = { viewModel.setMode(it) },
                 onSave = { viewModel.saveCanvasElements() },
+                onExportImage = { viewModel.exportCanvasAsImage(context) },
                 onClear = { viewModel.clearCanvas() },
                 modifier = Modifier.align(Alignment.TopStart)
             )

@@ -6,19 +6,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.example.memoapp.model.CanvasElement
 import com.example.memoapp.ui.concept.ConceptScreen
-import kotlinx.coroutines.launch
 
 class ConceptFragment : Fragment() {
 
@@ -28,7 +23,6 @@ class ConceptFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        observeSaveResult()
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -39,17 +33,6 @@ class ConceptFragment : Fragment() {
                         onShowColorPicker = { showColorPickerDialog() },
                         onEditSelectedText = { element -> showEditTextViewDialog(element) }
                     )
-                }
-            }
-        }
-    }
-
-    private fun observeSaveResult() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.saveResult.collect { success ->
-                    val message = if (success) "保存完了" else "保存に失敗しました"
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
                 }
             }
         }
