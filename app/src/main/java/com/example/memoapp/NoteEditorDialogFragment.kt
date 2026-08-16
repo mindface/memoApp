@@ -96,7 +96,9 @@ class NoteEditorDialogFragment : DialogFragment() {
 
         db.collection("notes").document(noteId).set(newNote)
             .addOnFailureListener {
-                Toast.makeText(context, "保存に失敗しました", Toast.LENGTH_SHORT).show()
+                context?.let {
+                    Toast.makeText(it, "保存に失敗しました", Toast.LENGTH_SHORT).show()
+                }
             }
     }
 
