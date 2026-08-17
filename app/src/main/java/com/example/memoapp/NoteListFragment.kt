@@ -23,10 +23,9 @@ import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import android.os.Looper
-import android.os.Handler
 import android.text.TextWatcher
 import android.text.Editable
 import android.view.WindowManager
@@ -47,8 +46,6 @@ class NoteListFragment : Fragment() {
     private lateinit var editTitle: EditText
     private lateinit var editContent: EditText
     private var existingNote: Note? = null
-    private val handler = Handler(Looper.getMainLooper())
-    private var runnable: Runnable? = null
     private var noteId: String = ""
 
     // Dialog state for dynamic updates
@@ -62,20 +59,6 @@ class NoteListFragment : Fragment() {
     ): View {
         _binding = FragmentNoteListBinding.inflate(inflater, container, false)
         return binding.root
-    }
-
-    private var lastSavedTitle = ""
-    private var lastSavedContent = ""
-    private fun autoSave(existingNote: Note?) {
-        val title = editTitle.text.toString()
-        val content = editContent.text.toString()
-
-        if (title == lastSavedTitle && content == lastSavedContent) return
-
-        lastSavedTitle = title
-        lastSavedContent = content
-
-        saveNote(existingNote, title, content)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -100,24 +83,6 @@ class NoteListFragment : Fragment() {
         binding.fabAddNote.setOnClickListener {
             showAddEditNoteDialog(null)
         }
-    }
-    private fun setupAutoSave() {
-        val watcher = object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                runnable?.let { handler.removeCallbacks(it) }
-                runnable = Runnable {
-                    autoSave(existingNote)
-                }
-
-                handler.postDelayed(runnable!!, 1000)
-            }
-
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        }
-
-        editTitle.addTextChangedListener(watcher)
-        editContent.addTextChangedListener(watcher)
     }
 
     private fun setupRecyclerView() {
@@ -158,22 +123,35 @@ class NoteListFragment : Fragment() {
 
     private fun fetchNotes(userId: String) {
         db.collection("notes")
-            .whereEqualTo("userId", userId)
+            .where(
+                Filter.or(
+                    Filter.equalTo("user_id", userId),
+                    Filter.equalTo("userId", userId)
+                )
+            )
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
                     Log.w("Firestore", "Listen failed.", e)
                     return@addSnapshotListener
                 }
                 if (snapshots != null) {
+                    Log.d("Firestore", "Notes snapshot received. Count: ${snapshots.size()}")
+                    val fetchedNotes = snapshots.documents.mapNotNull { doc ->
+                        doc.toObject(Note::class.java)?.apply { 
+                            id = doc.id 
+                            Log.d("Firestore", "Note: $title, ID: $id, userId: ${this.userId}")
+                        }
+                    }
+                    
                     notes.clear()
-                    notes.addAll(snapshots.toObjects(Note::class.java))
+                    notes.addAll(fetchedNotes)
                     // Sort by updated_at descending
                     notes.sortByDescending { it.updated_at }
 
                     // Apply current filter
                     filter(binding.searchViewNotes.query.toString())
 
-                    Log.d("Firestore", "Updated notes: ${notes.size}")
+                    Log.d("Firestore", "Final notes list count: ${notes.size}")
                 }
             }
     }
@@ -289,7 +267,6 @@ class NoteListFragment : Fragment() {
         }
 
         dialog.show()
-        setupAutoSave()
     }
 
     private fun populateTypeChips(chipGroup: ChipGroup, searchEdit: TextInputEditText, symbolsChipGroup: ChipGroup) {

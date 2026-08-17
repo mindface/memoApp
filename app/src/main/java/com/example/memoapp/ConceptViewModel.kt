@@ -55,6 +55,12 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     private val _exportResult = MutableSharedFlow<String?>()
     val exportResult: SharedFlow<String?> = _exportResult
 
+    private val _viewOffset = MutableStateFlow(Offset.Zero)
+    val viewOffset: StateFlow<Offset> = _viewOffset.asStateFlow()
+
+    private val _viewScale = MutableStateFlow(1f)
+    val viewScale: StateFlow<Float> = _viewScale.asStateFlow()
+
     init {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -170,6 +176,15 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
         }
         
         Log.d("Firestore", "Fetching elements for conceptId: $conceptId")
+
+        // Fetch concept metadata (view state)
+        db.collection("concepts").document(conceptId).get().addOnSuccessListener { doc ->
+            doc.toObject(com.example.memoapp.model.Concept::class.java)?.let { concept ->
+                _viewOffset.value = Offset(concept.lastViewX, concept.lastViewY)
+                _viewScale.value = if (concept.lastViewScale > 0.01f) concept.lastViewScale else 1f
+                Log.d("Firestore", "View state restored: ${_viewOffset.value}, scale: ${_viewScale.value}")
+            }
+        }
         
         elementsListener?.remove()
         elementsListener = db.collection("canvas_elements")
@@ -232,11 +247,18 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
                 viewModelScope.launch { _saveResult.emit(false) }
             }
 
-        // Update the concept's updatedAt timestamp
+        // Update the concept's metadata including view state
+        val updateData = mapOf(
+            "updated_at" to System.currentTimeMillis(),
+            "last_view_x" to _viewOffset.value.x,
+            "last_view_y" to _viewOffset.value.y,
+            "last_view_scale" to _viewScale.value
+        )
+
         db.collection("concepts").document(conceptId)
-            .update("updated_at", System.currentTimeMillis())
+            .update(updateData)
             .addOnFailureListener { e ->
-                Log.e("Firestore", "Failed to update concept timestamp", e)
+                Log.e("Firestore", "Failed to update concept metadata", e)
             }
     }
 
@@ -244,6 +266,13 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
         elements.clear()
         _selectedElement.value = null
         _currentMode.value = ConceptMode.PAN_ZOOM
+        _viewOffset.value = Offset.Zero
+        _viewScale.value = 1f
+    }
+
+    fun updateViewState(offset: Offset, scale: Float) {
+        _viewOffset.value = offset
+        _viewScale.value = scale
     }
 
     fun exportCanvasAsImage(context: Context) {

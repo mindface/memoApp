@@ -26,9 +26,12 @@ import com.example.memoapp.model.CanvasElement
 fun ConceptCanvas(
     elements: List<CanvasElement>,
     selectedElement: CanvasElement?,
+    viewOffset: Offset,
+    viewScale: Float,
     onSelectElement: (CanvasElement?) -> Unit,
     onCanvasClick: (Float, Float) -> Unit,
     onElementUpdate: (CanvasElement) -> Unit,
+    onViewStateUpdate: (Offset, Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 状態の更新をジェスチャーループに伝えるための rememberUpdatedState
@@ -38,9 +41,16 @@ fun ConceptCanvas(
     val currentOnSelectElement by rememberUpdatedState(onSelectElement)
     val currentOnCanvasClick by rememberUpdatedState(onCanvasClick)
     val currentOnElementUpdate by rememberUpdatedState(onElementUpdate)
+    val currentOnViewStateUpdate by rememberUpdatedState(onViewStateUpdate)
 
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    var scale by remember { mutableFloatStateOf(viewScale) }
+    var offset by remember { mutableStateOf(viewOffset) }
+
+    // ViewModelからの外部的な表示状態の変更を検知して同期
+    LaunchedEffect(viewOffset, viewScale) {
+        offset = viewOffset
+        scale = viewScale
+    }
     
     // UI用のドラッグ/リサイズ一時状態
     var activeElementId by remember { mutableStateOf<String?>(null) }
@@ -103,6 +113,7 @@ fun ConceptCanvas(
                                 // 支点（指の中心）を維持したまま拡大縮小
                                 offset = centroid - (centroid - offset) * scaleRatio + panAmount
                                 scale = newScale
+                                currentOnViewStateUpdate(offset, scale)
                             }
                             
                             activeElementId = null
@@ -127,6 +138,7 @@ fun ConceptCanvas(
                                     dragDelta += Offset(delta.x / scale, delta.y / scale)
                                 } else if (isDraggingCanvas) {
                                     offset += delta
+                                    currentOnViewStateUpdate(offset, scale)
                                 }
                                 change.consume()
                             }
@@ -221,14 +233,19 @@ fun ConceptCanvas(
                         )
                     }
                     "TEXT" -> {
-                        drawText(
-                            textMeasurer = textMeasurer,
+                        // テキストが画面外で強制的に折り返されないように、十分な幅のConstraintsを指定
+                        val layoutResult = textMeasurer.measure(
                             text = element.text,
-                            topLeft = Offset(renderX, renderY),
                             style = androidx.compose.ui.text.TextStyle(
                                 color = color,
                                 fontSize = renderSize.sp
-                            )
+                            ),
+                            softWrap = false,
+                            constraints = androidx.compose.ui.unit.Constraints(maxWidth = 10000)
+                        )
+                        drawText(
+                            textLayoutResult = layoutResult,
+                            topLeft = Offset(renderX, renderY)
                         )
                     }
                 }

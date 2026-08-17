@@ -23,6 +23,8 @@ fun ConceptScreen(
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
+    val viewOffset by viewModel.viewOffset.collectAsStateWithLifecycle()
+    val viewScale by viewModel.viewScale.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // 保存・エクスポート結果のトースト表示
@@ -63,6 +65,8 @@ fun ConceptScreen(
             ConceptCanvas(
                 elements = elements,
                 selectedElement = selectedElement,
+                viewOffset = viewOffset,
+                viewScale = viewScale,
                 onSelectElement = { viewModel.selectElement(it) },
                 onCanvasClick = { x, y ->
                     when (mode) {
@@ -72,7 +76,8 @@ fun ConceptScreen(
                         ConceptMode.PAN_ZOOM -> {}
                     }
                 },
-                onElementUpdate = { viewModel.updateElement(it) }
+                onElementUpdate = { viewModel.updateElement(it) },
+                onViewStateUpdate = { offset, scale -> viewModel.updateViewState(offset, scale) }
             )
 
             ConceptToolbar(

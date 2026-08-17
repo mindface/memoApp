@@ -17,5 +17,14 @@ data class Concept(
     var createdAt: Long = System.currentTimeMillis(),
 
     @get:PropertyName("updated_at") @set:PropertyName("updated_at")
-    var updatedAt: Long = System.currentTimeMillis()
+    var updatedAt: Long = System.currentTimeMillis(),
+
+    @get:PropertyName("last_view_x") @set:PropertyName("last_view_x")
+    var lastViewX: Float = 0f,
+
+    @get:PropertyName("last_view_y") @set:PropertyName("last_view_y")
+    var lastViewY: Float = 0f,
+
+    @get:PropertyName("last_view_scale") @set:PropertyName("last_view_scale")
+    var lastViewScale: Float = 1f
 ) : Serializable
