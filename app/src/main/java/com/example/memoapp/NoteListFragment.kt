@@ -137,16 +137,21 @@ class NoteListFragment : Fragment() {
                 if (snapshots != null) {
                     Log.d("Firestore", "Notes snapshot received. Count: ${snapshots.size()}")
                     val fetchedNotes = snapshots.documents.mapNotNull { doc ->
-                        doc.toObject(Note::class.java)?.apply { 
-                            id = doc.id 
-                            Log.d("Firestore", "Note: $title, ID: $id, userId: ${this.userId}")
+                        try {
+                            doc.toObject(Note::class.java)?.apply { 
+                                id = doc.id 
+                                Log.d("Firestore", "Note fetched: $title, ID: $id")
+                            }
+                        } catch (err: Exception) {
+                            Log.e("Firestore", "Error parsing note ${doc.id}", err)
+                            null
                         }
                     }
                     
                     notes.clear()
                     notes.addAll(fetchedNotes)
                     // Sort by updated_at descending
-                    notes.sortByDescending { it.updated_at }
+                    notes.sortByDescending { it.getUpdatedAtString() }
 
                     // Apply current filter
                     filter(binding.searchViewNotes.query.toString())
@@ -204,11 +209,10 @@ class NoteListFragment : Fragment() {
         note?.let {
             editTitle.setText(it.title)
             editContent.setText(it.content)
-            builder.setTitle("Edit Note")
             builder.setNeutralButton("Delete") { _, _ ->
                 showDeleteConfirmationDialog(it.id)
             }
-        } ?: builder.setTitle("New Note")
+        }
 
         activeChipGroupTypes = chipGroupTypes
         activeChipGroupSymbols = chipGroupSymbols
@@ -234,12 +238,6 @@ class NoteListFragment : Fragment() {
         updateSymbolChipsByFilter("", "", chipGroupSymbols)
 
         val dialog = builder.setView(dialogView)
-            .setPositiveButton("Save") { _, _ ->
-                val title = editTitle.text.toString()
-                val content = editContent.text.toString()
-                saveNote(existingNote, title, content)
-            }
-            .setNegativeButton("Cancel", null)
             .setOnDismissListener {
                 activeChipGroupTypes = null
                 activeChipGroupSymbols = null
@@ -248,6 +246,14 @@ class NoteListFragment : Fragment() {
             .create()
 
         val btnExpand = dialogView.findViewById<ImageButton>(R.id.btn_expand_full)
+        val btnCancel = dialogView.findViewById<View>(R.id.btn_close)
+        val btnSave = dialogView.findViewById<View>(R.id.btn_save_note)
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnSave.setOnClickListener {
+            saveNote(existingNote, editTitle.text.toString(), editContent.text.toString())
+            dialog.dismiss()
+        }
 
         btnExpand.setOnClickListener {
             // ダイアログのウィンドウを取得

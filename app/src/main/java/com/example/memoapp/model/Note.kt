@@ -17,11 +17,15 @@ data class Note(
     var content: String = "",
 
     @get:PropertyName("created_at") @set:PropertyName("created_at")
-    var created_at: String = "",
+    var created_at: Any? = "",
 
     @get:PropertyName("updated_at") @set:PropertyName("updated_at")
-    var updated_at: String = ""
+    var updated_at: Any? = ""
 ) : Serializable {
+    // Helper to get as String for UI
+    fun getCreatedAtString(): String = created_at?.toString() ?: ""
+    fun getUpdatedAtString(): String = updated_at?.toString() ?: ""
+
     // Backward compatibility for reading old 'userId' field
     @get:PropertyName("userId") @set:PropertyName("userId")
     var userIdOld: String
