@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- 1. ヘッダー: 保存・キャンセルボタン (固定) -->
     <LinearLayout
         android:id="@+id/log_item_sticky_actions"
         android:layout_width="0dp"
@@ -39,14 +40,37 @@
             android:text="保存" />
     </LinearLayout>
 
+    <!-- 2. タイトルエリア (固定) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_log_item_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:hint="タイトル"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/log_item_sticky_actions">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_log_item_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:inputType="textCapSentences"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- 3. 本文エリア (スクロール可能) -->
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_log_item_content"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/log_item_sticky_actions">
+        app:layout_constraintTop_toBottomOf="@id/layout_log_item_title">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -55,32 +79,21 @@
             android:padding="16dp">
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layout_log_item_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="タイトル">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/edit_log_item_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textCapSentences" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_log_item_content"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:hint="本文（Markdown）">
+                app:hintEnabled="false">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/edit_log_item_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="top|start"
+                    android:background="@android:color/transparent"
+                    android:hint="本文（Markdown）を入力..."
                     android:inputType="textMultiLine|textCapSentences"
-                    android:minLines="16" />
+                    android:minLines="20"
+                    android:textSize="16sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
         </LinearLayout>

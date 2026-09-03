@@ -25,6 +25,7 @@ fun ConceptScreen(
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
     val viewOffset by viewModel.viewOffset.collectAsStateWithLifecycle()
     val viewScale by viewModel.viewScale.collectAsStateWithLifecycle()
+    val isGridEnabled by viewModel.isGridEnabled.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // 保存・エクスポート結果のトースト表示
@@ -67,22 +68,27 @@ fun ConceptScreen(
                 selectedElement = selectedElement,
                 viewOffset = viewOffset,
                 viewScale = viewScale,
+                isGridEnabled = isGridEnabled,
                 onSelectElement = { viewModel.selectElement(it) },
                 onCanvasClick = { x, y ->
                     when (mode) {
                         ConceptMode.ADD_RECT -> viewModel.addElement("RECTANGLE", x, y)
                         ConceptMode.ADD_CIRCLE -> viewModel.addElement("CIRCLE", x, y)
                         ConceptMode.ADD_TEXT -> onShowTextDialog(x, y)
+                        ConceptMode.ADD_ARROW -> viewModel.addElement("ARROW", x, y)
                         ConceptMode.PAN_ZOOM -> {}
                     }
                 },
                 onElementUpdate = { viewModel.updateElement(it) },
-                onViewStateUpdate = { offset, scale -> viewModel.updateViewState(offset, scale) }
+                onViewStateUpdate = { offset, scale -> viewModel.updateViewState(offset, scale) },
+                onSnapToGrid = { viewModel.snapToGrid(it) }
             )
 
             ConceptToolbar(
                 currentMode = mode,
+                isGridEnabled = isGridEnabled,
                 onModeChange = { viewModel.setMode(it) },
+                onToggleGrid = { viewModel.toggleGrid() },
                 onSave = { viewModel.saveCanvasElements() },
                 onExportImage = { viewModel.exportCanvasAsImage(context) },
                 onClear = { viewModel.clearCanvas() },

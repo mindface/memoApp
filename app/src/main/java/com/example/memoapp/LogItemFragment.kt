@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ScaleGestureDetector
+import android.view.MotionEvent
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -16,6 +18,9 @@ class LogItemFragment : Fragment() {
     private lateinit var repository: LogItemRepository
     private var existingItem: LogItem? = null
 
+    private var currentTextSize = 16f
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -27,6 +32,8 @@ class LogItemFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         repository = LogItemRepository(requireContext().applicationContext)
         
+        setupZoomGestures()
+
         val logItemId = arguments?.getString("logItemId")
         if (logItemId != null) {
             existingItem = repository.getById(logItemId)
@@ -38,6 +45,29 @@ class LogItemFragment : Fragment() {
 
         binding.buttonSaveLogItem.setOnClickListener { saveLogItem() }
         binding.buttonCancelLogItem.setOnClickListener { findNavController().navigateUp() }
+    }
+
+    private fun setupZoomGestures() {
+        scaleGestureDetector = ScaleGestureDetector(requireContext(), object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                currentTextSize *= detector.scaleFactor
+                // 文字サイズを 10sp 〜 50sp の範囲に制限
+                currentTextSize = currentTextSize.coerceIn(10f, 50f)
+                binding.editLogItemContent.textSize = currentTextSize
+                return true
+            }
+        })
+
+        binding.editLogItemContent.setOnTouchListener { v: View, event: MotionEvent ->
+            // ピンチ操作（指2本以上）の場合はジェスチャー検出器に渡す
+            if (event.pointerCount >= 2) {
+                scaleGestureDetector.onTouchEvent(event)
+                true // イベントを消費してスクロールを防ぐ
+            } else {
+                v.performClick()
+                false // 通常のタッチ（スクロール等）はシステムに任せる
+            }
+        }
     }
 
     private fun saveLogItem() {

@@ -29,8 +29,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
 import java.io.OutputStream
+import kotlin.math.roundToInt
 
-enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT }
+enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW }
 
 class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     private val db: FirebaseFirestore = Firebase.firestore
@@ -60,6 +61,19 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
 
     private val _viewScale = MutableStateFlow(1f)
     val viewScale: StateFlow<Float> = _viewScale.asStateFlow()
+
+    private val _isGridEnabled = MutableStateFlow(true)
+    val isGridEnabled: StateFlow<Boolean> = _isGridEnabled.asStateFlow()
+
+    fun toggleGrid() {
+        _isGridEnabled.value = !_isGridEnabled.value
+    }
+
+    fun snapToGrid(value: Float): Float {
+        if (!_isGridEnabled.value) return value
+        val gridSize = 50f
+        return (value / gridSize).roundToInt() * gridSize
+    }
 
     init {
         val currentUser = auth.currentUser
@@ -91,16 +105,20 @@ class ConceptViewModel(savedStateHandle: SavedStateHandle) : ViewModel() {
     fun addElement(type: String, x: Float, y: Float, text: String = "") {
         val userId = auth.currentUser?.uid ?: return
         if (conceptId.isEmpty()) return
+        
+        val snappedX = snapToGrid(x)
+        val snappedY = snapToGrid(y)
+        
         val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
         val newElement = CanvasElement(
             id = db.collection("canvas_elements").document().id,
             userId = userId,
             conceptId = conceptId,
             type = type,
-            x = x,
-            y = y,
-            width = 150f,
-            height = 150f,
+            x = snappedX,
+            y = snappedY,
+            width = if (type == "ARROW") 100f else 150f,
+            height = if (type == "ARROW") 100f else 150f,
             text = text,
             color = if (type == "TEXT") Color.BLACK else _selectedColor.value,
             zIndex = maxZ + 1
