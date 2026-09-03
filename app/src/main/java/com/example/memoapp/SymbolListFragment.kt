@@ -71,6 +71,8 @@ class SymbolListFragment : Fragment() {
         val editContent = dialogView.findViewById<TextInputEditText>(R.id.edit_symbol_content)
         val chipGroup = dialogView.findViewById<ChipGroup>(R.id.chip_group_language)
         val btnFillTest = dialogView.findViewById<View>(R.id.btn_fill_test_data)
+        val btnCancel = dialogView.findViewById<View>(R.id.btn_cancel_symbol)
+        val btnSave = dialogView.findViewById<View>(R.id.btn_save_symbol)
 
         symbol?.let {
             editTitle.setText(it.title)
@@ -101,20 +103,17 @@ class SymbolListFragment : Fragment() {
             editContent.setText(testContent)
         }
 
-        builder.setView(dialogView)
-            .setTitle(if (symbol == null) "New Symbol" else "Edit Symbol")
-            .setPositiveButton("Save") { _, _ ->
-                val title = editTitle.text.toString()
-                val content = editContent.text.toString()
-                val selectedChipId = chipGroup.checkedChipId
-                val language = if (selectedChipId != View.NO_ID) {
-                    dialogView.findViewById<Chip>(selectedChipId).text.toString()
-                } else ""
-                
-                saveSymbol(symbol, title, content, language)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val dialog = builder.setView(dialogView).create()
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnSave.setOnClickListener {
+            val selectedChipId = chipGroup.checkedChipId
+            val language = if (selectedChipId != View.NO_ID) {
+                dialogView.findViewById<Chip>(selectedChipId).text.toString()
+            } else ""
+            saveSymbol(symbol, editTitle.text.toString(), editContent.text.toString(), language)
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 
     private fun saveSymbol(existingSymbol: Symbol?, title: String, content: String, language: String) {

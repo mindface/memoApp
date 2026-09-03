@@ -40,6 +40,9 @@ data class CanvasElement(
     @get:PropertyName("z_index") @set:PropertyName("z_index")
     var zIndex: Int = 0,
 
+    @get:PropertyName("rotation") @set:PropertyName("rotation")
+    var rotation: Float = 0f,
+
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable

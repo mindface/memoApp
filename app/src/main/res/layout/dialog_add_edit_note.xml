@@ -14,13 +14,12 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="12dp">
 
-        <ImageButton
+        <Button
             android:id="@+id/btn_close"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="閉じる" />
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="キャンセル" />
 
         <TextView
             android:id="@+id/text_status"
@@ -40,11 +39,18 @@
             android:src="@android:drawable/ic_menu_zoom"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="全画面表示" />
+
+        <Button
+            android:id="@+id/btn_save_note"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="保存" />
     </LinearLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:fillViewport="true">
 
         <LinearLayout

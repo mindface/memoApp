@@ -37,6 +37,10 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_HomeFragment_to_NoteListFragment)
         }
 
+        binding.buttonToLogItem.setOnClickListener {
+            findNavController().navigate(R.id.action_HomeFragment_to_LogItemListFragment)
+        }
+
         binding.buttonToConcepts.setOnClickListener {
             findNavController().navigate(R.id.action_HomeFragment_to_ConceptListFragment)
         }

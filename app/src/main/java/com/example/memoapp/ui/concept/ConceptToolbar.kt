@@ -13,7 +13,9 @@ import com.example.memoapp.ConceptMode
 @Composable
 fun ConceptToolbar(
     currentMode: ConceptMode,
+    isGridEnabled: Boolean,
     onModeChange: (ConceptMode) -> Unit,
+    onToggleGrid: () -> Unit,
     onSave: () -> Unit,
     onExportImage: () -> Unit,
     onClear: () -> Unit,
@@ -43,12 +45,29 @@ fun ConceptToolbar(
                 onClick = { onModeChange(ConceptMode.ADD_CIRCLE) }
             )
             ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_send,
+                contentDescription = "Add Arrow",
+                isSelected = currentMode == ConceptMode.ADD_ARROW,
+                onClick = { onModeChange(ConceptMode.ADD_ARROW) }
+            )
+            ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_edit,
                 contentDescription = "Add Text",
                 isSelected = currentMode == ConceptMode.ADD_TEXT,
                 onClick = { onModeChange(ConceptMode.ADD_TEXT) }
             )
             
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
+            Spacer(modifier = Modifier.width(8.dp))
+
+            ToolbarButton(
+                iconRes = if (isGridEnabled) android.R.drawable.ic_menu_view else android.R.drawable.ic_menu_close_clear_cancel,
+                contentDescription = "Toggle Grid",
+                isSelected = isGridEnabled,
+                onClick = onToggleGrid
+            )
+
             Spacer(modifier = Modifier.width(8.dp))
             Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
             Spacer(modifier = Modifier.width(8.dp))

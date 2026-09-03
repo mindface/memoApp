@@ -60,6 +60,11 @@ class NoteEditorDialogFragment : DialogFragment() {
             dismiss()
         }
 
+        binding.btnSaveNote.setOnClickListener {
+            saveNote()
+            dismiss()
+        }
+
         // 拡大ボタンのクリック処理
         binding.btnExpandFull.setOnClickListener {
             switchToFullScreen()
@@ -67,10 +72,6 @@ class NoteEditorDialogFragment : DialogFragment() {
 
         return AlertDialog.Builder(requireContext())
             .setView(binding.root)
-            .setPositiveButton("保存") { _, _ ->
-                saveNote()
-            }
-            .setNegativeButton("キャンセル", null)
             .create()
     }
 
