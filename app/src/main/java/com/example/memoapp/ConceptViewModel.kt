@@ -122,13 +122,14 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             type = type,
             x = snappedX,
             y = snappedY,
-            width = if (type == "ARROW") 100f else 150f,
-            height = if (type == "ARROW") 100f else 150f,
+            width = if (type == "TEXT") 1f else if (type == "ARROW") 100f else 150f,
+            height = if (type == "TEXT") 1f else if (type == "ARROW") 100f else 150f,
             text = text,
             color = if (type == "TEXT") android.graphics.Color.BLACK else _selectedColor.value,
             zIndex = maxZ + 1
         )
         elements.add(newElement)
+        selectElement(newElement)
         _currentMode.value = ConceptMode.PAN_ZOOM
     }
 
