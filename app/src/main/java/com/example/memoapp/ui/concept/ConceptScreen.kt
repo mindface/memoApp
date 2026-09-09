@@ -23,9 +23,11 @@ fun ConceptScreen(
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
+    val canPaste by viewModel.canPaste.collectAsStateWithLifecycle()
     val viewOffset by viewModel.viewOffset.collectAsStateWithLifecycle()
     val viewScale by viewModel.viewScale.collectAsStateWithLifecycle()
     val isGridEnabled by viewModel.isGridEnabled.collectAsStateWithLifecycle()
+    val isLocalOnly by viewModel.isLocalOnly.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // 保存・エクスポート結果のトースト表示
@@ -48,7 +50,10 @@ fun ConceptScreen(
         bottomBar = {
             ConceptBottomBar(
                 selectedElement = selectedElement,
+                canPaste = canPaste,
                 onDelete = { viewModel.deleteSelectedElement() },
+                onCopy = { viewModel.copySelectedElement() },
+                onPaste = { viewModel.pasteElement() },
                 onSendToBack = { viewModel.sendSelectedToBack() },
                 onBringToFront = { viewModel.bringSelectedToFront() },
                 onPickColor = onShowColorPicker,
@@ -87,9 +92,11 @@ fun ConceptScreen(
             ConceptToolbar(
                 currentMode = mode,
                 isGridEnabled = isGridEnabled,
+                isLocalOnly = isLocalOnly,
                 onModeChange = { viewModel.setMode(it) },
                 onToggleGrid = { viewModel.toggleGrid() },
-                onSave = { viewModel.saveCanvasElements() },
+                onSave = { viewModel.saveCanvasElements(context) },
+                onPushToCloud = { viewModel.pushToCloud(context) },
                 onExportImage = { viewModel.exportCanvasAsImage(context) },
                 onClear = { viewModel.clearCanvas() },
                 modifier = Modifier.align(Alignment.TopStart)

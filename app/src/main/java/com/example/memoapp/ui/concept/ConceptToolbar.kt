@@ -14,9 +14,11 @@ import com.example.memoapp.ConceptMode
 fun ConceptToolbar(
     currentMode: ConceptMode,
     isGridEnabled: Boolean,
+    isLocalOnly: Boolean,
     onModeChange: (ConceptMode) -> Unit,
     onToggleGrid: () -> Unit,
     onSave: () -> Unit,
+    onPushToCloud: () -> Unit,
     onExportImage: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
@@ -77,6 +79,15 @@ fun ConceptToolbar(
                 contentDescription = "Save Canvas",
                 onClick = onSave
             )
+
+            if (isLocalOnly) {
+                ToolbarButton(
+                    iconRes = android.R.drawable.ic_menu_upload,
+                    contentDescription = "Push to Cloud",
+                    onClick = onPushToCloud
+                )
+            }
+
             ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_gallery,
                 contentDescription = "Export Image",
