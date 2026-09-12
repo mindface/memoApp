@@ -268,6 +268,7 @@ fun ConceptCanvas(
 
                 val renderRotation = if (isBeingRotated) element.rotation + rotationDelta else element.rotation
                 val renderCenter = Offset(renderX + renderW / 2, renderY + renderH / 2)
+                val safeScale = if (scale > 0.001f) scale else 1f
 
                 withTransform({ rotate(renderRotation, renderCenter) }) {
                     when (element.type) {
@@ -281,7 +282,13 @@ fun ConceptCanvas(
                             radius = renderW / 2,
                             center = renderCenter
                         )
-                        "ARROW" -> drawArrow(renderX, renderY, renderX + renderW, renderY + renderH, color)
+                        "ARROW" -> drawArrow(
+                            x1 = renderX,
+                            y1 = renderY + renderH / 2,
+                            x2 = renderX + renderW,
+                            y2 = renderY + renderH / 2,
+                            color = color
+                        )
                         "TEXT" -> {
                             val layout = textMeasurer.measure(
                                 text = element.text,
@@ -295,6 +302,22 @@ fun ConceptCanvas(
                             )
                         }
                     }
+                }
+
+                // クラウド共有中のインジケーター（雲アイコン）
+                if (element.isShared) {
+                    val cloudIconSize = 24f / safeScale
+                    val cx = renderX + renderW - cloudIconSize
+                    val cy = renderY - cloudIconSize
+                    
+                    drawCircle(
+                        color = Color.LightGray,
+                        radius = cloudIconSize / 2,
+                        center = Offset(cx, cy)
+                    )
+                    // シンプルな雲の形（3つの丸）を擬似的に描画
+                    drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx - 5f / safeScale, cy))
+                    drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx + 5f / safeScale, cy))
                 }
                 
                 if (element == selectedElement) {
@@ -341,16 +364,40 @@ private fun DrawScope.drawGrid(offset: Offset, scale: Float) {
 }
 
 private fun DrawScope.drawArrow(x1: Float, y1: Float, x2: Float, y2: Float, color: Color) {
-    val headSize = 30f
+    val headSize = 40f // Enlarged from 30f
     val angle = atan2(y2 - y1, x2 - x1)
+    
+    // Main shaft
     drawLine(color, Offset(x1, y1), Offset(x2, y2), 10f)
+    
+    // Sharp arrowhead path
     val path = Path().apply {
         moveTo(x2, y2)
-        lineTo(x2 - headSize * cos(angle - 0.5f), y2 - headSize * sin(angle - 0.5f))
-        lineTo(x2 - headSize * cos(angle + 0.5f), y2 - headSize * sin(angle + 0.5f))
+        lineTo(
+            x2 - headSize * cos(angle - 0.4f), 
+            y2 - headSize * sin(angle - 0.4f)
+        )
+        // Add a slight notch at the back for a "stealth/sharp" look
+        lineTo(
+            x2 - (headSize * 0.7f) * cos(angle), 
+            y2 - (headSize * 0.7f) * sin(angle)
+        )
+        lineTo(
+            x2 - headSize * cos(angle + 0.4f), 
+            y2 - headSize * sin(angle + 0.4f)
+        )
         close()
     }
+    
+    // Fill the arrowhead
     drawPath(path, color)
+    
+    // Add a white outline to the arrowhead to make it pop
+    drawPath(
+        path = path,
+        color = Color.White,
+        style = Stroke(width = 2f)
+    )
 }
 
 private fun rotatePoint(point: Offset, center: Offset, angleDegrees: Float): Offset {

@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -124,6 +125,16 @@ fun ConceptItem(concept: Concept, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = concept.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                
+                if (concept.hasSharedContent) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_menu_upload),
+                        contentDescription = "Shared with Firebase",
+                        modifier = Modifier.size(16.dp).padding(start = 4.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
                 if (concept.isLocalOnly) {
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer,

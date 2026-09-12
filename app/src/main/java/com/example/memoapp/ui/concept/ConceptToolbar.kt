@@ -1,7 +1,9 @@
 package com.example.memoapp.ui.concept
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -14,24 +16,27 @@ import com.example.memoapp.ConceptMode
 fun ConceptToolbar(
     currentMode: ConceptMode,
     isGridEnabled: Boolean,
-    isLocalOnly: Boolean,
     onModeChange: (ConceptMode) -> Unit,
     onToggleGrid: () -> Unit,
-    onSave: () -> Unit,
-    onPushToCloud: () -> Unit,
+    onSaveLocal: () -> Unit,
+    onSaveFirebase: () -> Unit,
     onExportImage: () -> Unit,
-    onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+
     Surface(
         modifier = modifier
+            .fillMaxWidth()
             .padding(16.dp),
         shadowElevation = 4.dp,
         color = Color.White,
         shape = MaterialTheme.shapes.medium
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier
+                .padding(8.dp)
+                .horizontalScroll(scrollState),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             ToolbarButton(
@@ -74,29 +79,24 @@ fun ConceptToolbar(
             Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
             Spacer(modifier = Modifier.width(8.dp))
 
+            // 1. Local Storage Button (SD Card icon)
             ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_save,
-                contentDescription = "Save Canvas",
-                onClick = onSave
+                contentDescription = "Local Save",
+                onClick = onSaveLocal
             )
 
-            if (isLocalOnly) {
-                ToolbarButton(
-                    iconRes = android.R.drawable.ic_menu_upload,
-                    contentDescription = "Push to Cloud",
-                    onClick = onPushToCloud
-                )
-            }
+            // 2. Firebase Sync Button (Cloud icon)
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_upload,
+                contentDescription = "Firebase Sync",
+                onClick = onSaveFirebase
+            )
 
             ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_gallery,
                 contentDescription = "Export Image",
                 onClick = onExportImage
-            )
-            ToolbarButton(
-                iconRes = android.R.drawable.ic_menu_delete,
-                contentDescription = "Clear Canvas",
-                onClick = onClear
             )
         }
     }

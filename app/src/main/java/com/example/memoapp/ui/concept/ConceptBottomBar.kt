@@ -22,6 +22,8 @@ fun ConceptBottomBar(
     onDelete: () -> Unit,
     onCopy: () -> Unit,
     onPaste: () -> Unit,
+    onToggleShare: () -> Unit,
+    onShowDetail: () -> Unit,
     onSendToBack: () -> Unit,
     onBringToFront: () -> Unit,
     onPickColor: () -> Unit,
@@ -65,6 +67,21 @@ fun ConceptBottomBar(
                         iconRes = android.R.drawable.ic_menu_share,
                         contentDescription = "Copy",
                         onClick = onCopy
+                    )
+                    
+                    // Firebase Toggle (Cloud Icon)
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_upload,
+                        contentDescription = "Firebase Toggle",
+                        isSelected = selectedElement.isShared,
+                        onClick = onToggleShare
+                    )
+
+                    // Detail/Info Button
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_info_details,
+                        contentDescription = "More Info",
+                        onClick = onShowDetail
                     )
                 }
                 

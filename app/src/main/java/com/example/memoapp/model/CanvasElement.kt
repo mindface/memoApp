@@ -43,6 +43,9 @@ data class CanvasElement(
     @get:PropertyName("rotation") @set:PropertyName("rotation")
     var rotation: Float = 0f,
 
+    @get:PropertyName("is_shared") @set:PropertyName("is_shared")
+    var isShared: Boolean = false,
+
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable

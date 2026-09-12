@@ -30,5 +30,8 @@ data class Concept(
     var lastViewScale: Float = 1f,
 
     @get:Exclude @set:Exclude
-    var isLocalOnly: Boolean = false
+    var isLocalOnly: Boolean = false,
+
+    @get:PropertyName("has_shared_content") @set:PropertyName("has_shared_content")
+    var hasSharedContent: Boolean = false
 ) : Serializable
