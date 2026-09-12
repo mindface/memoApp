@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
@@ -41,8 +43,6 @@ fun ConceptCanvas(
     onSnapToGrid: (Float) -> Float,
     modifier: Modifier = Modifier
 ) {
-    // 状態の更新をジェスチャーループに伝えるための rememberUpdatedState
-    // これにより pointerInput(Unit) 内で常に最新の値を参照できる
     val currentElements by rememberUpdatedState(elements)
     val currentSelectedElement by rememberUpdatedState(selectedElement)
     val currentOnSelectElement by rememberUpdatedState(onSelectElement)
@@ -54,13 +54,11 @@ fun ConceptCanvas(
     var scale by remember { mutableFloatStateOf(viewScale) }
     var offset by remember { mutableStateOf(viewOffset) }
 
-    // ViewModelからの外部的な表示状態の変更を検知して同期
     LaunchedEffect(viewOffset, viewScale) {
         offset = viewOffset
         scale = viewScale
     }
     
-    // UI用のドラッグ/リサイズ/回転一時状態
     var activeElementId by remember { mutableStateOf<String?>(null) }
     var dragDelta by remember { mutableStateOf(Offset.Zero) }
     var sizeDelta by remember { mutableStateOf(Offset.Zero) }
@@ -72,39 +70,70 @@ fun ConceptCanvas(
     val textMeasurer = rememberTextMeasurer()
     val selectionColor = Color(0xFF4285F4)
 
+    // Helper to get measured bounds of an element
+    fun getElementBounds(el: CanvasElement, resizeDelta: Offset = Offset.Zero): Rect {
+        var w = el.width
+        var h = el.height
+        
+        if (el.type == "TEXT") {
+            val fontSize = (el.fontSize + resizeDelta.y).coerceAtLeast(10f)
+            val layout = textMeasurer.measure(
+                el.text,
+                androidx.compose.ui.text.TextStyle(fontSize = fontSize.sp),
+                softWrap = false,
+                constraints = androidx.compose.ui.unit.Constraints(maxWidth = 10000)
+            )
+            w = layout.size.width.toFloat()
+            h = layout.size.height.toFloat()
+        } else {
+            w = (w + resizeDelta.x).coerceAtLeast(50f)
+            h = (h + resizeDelta.y).coerceAtLeast(50f)
+        }
+        
+        return Rect(el.x, el.y, el.x + w, el.y + h)
+    }
+
+    // Auto-update newly added elements
+    LaunchedEffect(currentElements) {
+        currentElements.forEach { element ->
+            if (element.type == "TEXT" && element.width <= 1f && element.text.isNotEmpty()) {
+                val bounds = getElementBounds(element)
+                currentOnElementUpdate(element.copy(width = bounds.width, height = bounds.height))
+            }
+        }
+    }
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            // 鍵を Unit にすることで、座標更新によるセンサーのリセットを防ぐ
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val downPos = down.position
+                    val cx = (downPos.x - offset.x) / scale
+                    val cy = (downPos.y - offset.y) / scale
                     
-                    // キャンバス座標に変換
-                    val currentScaleAtStart = if (scale > 0.001f) scale else 1f
-                    val totalOffsetAtStart = offset
-                    val cx = (downPos.x - totalOffsetAtStart.x) / currentScaleAtStart
-                    val cy = (downPos.y - totalOffsetAtStart.y) / currentScaleAtStart
+                    val sel = currentSelectedElement
+                    val bounds = sel?.let { getElementBounds(it) }
                     
-                    // 当たり判定
-                    val rotationHandleHit = currentSelectedElement?.let { isOnRotationHandle(it, cx, cy) } ?: false
-                    val resizeHandleHit = currentSelectedElement?.let { isOnHandle(it, cx, cy) } ?: false
-                    val bodyHit = currentElements.findLast { it.contains(cx, cy) }
+                    val rotationHandleHit = sel != null && bounds != null && isOnRotationHandle(sel, cx, cy, bounds)
+                    val resizeHandleHit = sel != null && bounds != null && isOnHandle(sel, cx, cy, bounds)
+                    
+                    val bodyHit = currentElements.findLast { el ->
+                        contains(el, cx, cy, getElementBounds(el))
+                    }
                     
                     var totalDrag = Offset.Zero
                     var everMultiTouch = false
                     var startAngle = 0f
                     
                     if (rotationHandleHit) {
-                        activeElementId = currentSelectedElement?.id
+                        activeElementId = sel?.id
                         isRotating = true
-                        // startAngle is not strictly needed for absolute rotation, 
-                        // but let's keep it to support relative rotation if needed.
-                        val center = currentSelectedElement!!.center()
+                        val center = bounds!!.center
                         startAngle = Math.toDegrees(atan2((cy - center.y).toDouble(), (cx - center.x).toDouble())).toFloat()
                     } else if (resizeHandleHit) {
-                        activeElementId = currentSelectedElement?.id
+                        activeElementId = sel?.id
                         isResizing = true
                     } else if (bodyHit != null) {
                         activeElementId = bodyHit.id
@@ -128,13 +157,10 @@ fun ConceptCanvas(
                                 val oldScale = scale
                                 val newScale = (oldScale * zoomAmount).coerceIn(0.1f, 5f)
                                 val scaleRatio = newScale / oldScale
-                                
-                                // 支点（指の中心）を維持したまま拡大縮小
                                 offset = centroid - (centroid - offset) * scaleRatio + panAmount
                                 scale = newScale
                                 currentOnViewStateUpdate(offset, scale)
                             }
-                            
                             activeElementId = null
                             isResizing = false
                             isRotating = false
@@ -143,42 +169,23 @@ fun ConceptCanvas(
                             if (change.pressed) {
                                 val delta = change.position - change.previousPosition
                                 totalDrag += delta
-                                
                                 val currentCX = (change.position.x - offset.x) / scale
                                 val currentCY = (change.position.y - offset.y) / scale
 
                                 if (isRotating) {
                                     val element = currentElements.find { it.id == activeElementId }
                                     if (element != null) {
-                                        val center = element.center()
-                                        val dx = currentCX - center.x
-                                        val dy = currentCY - center.y
-                                        val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
-                                        
-                                        // デッドゾーン: 中心に近すぎる場合は回転を計算しない
-                                        if (distance > 20f / scale) {
-                                            val currentAngle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
-                                            // 基準点（startAngle）からの相対変化を足す
-                                            rotationDelta = currentAngle - startAngle
-                                            
-                                            // グリッド有効時は15度スナップ
-                                            if (isGridEnabled) {
-                                                val totalRotation = element.rotation + rotationDelta
-                                                val snapped = (totalRotation / 15f).roundToInt() * 15f
-                                                rotationDelta = snapped - element.rotation
-                                            }
+                                        val center = getElementBounds(element).center
+                                        val currentAngle = Math.toDegrees(atan2((currentCY - center.y).toDouble(), (currentCX - center.x).toDouble())).toFloat()
+                                        rotationDelta = currentAngle - startAngle
+                                        if (isGridEnabled) {
+                                            val totalRotation = element.rotation + rotationDelta
+                                            val snapped = (totalRotation / 15f).roundToInt() * 15f
+                                            rotationDelta = snapped - element.rotation
                                         }
                                     }
                                 } else if (isResizing) {
-                                    // 要素ごとの制約
-                                    val element = currentElements.find { it.id == activeElementId }
-                                    if (element?.type == "CIRCLE") {
-                                        // 円は均等リサイズ
-                                        val d = (delta.x + delta.y) / 2
-                                        sizeDelta += Offset(d / scale, d / scale)
-                                    } else {
-                                        sizeDelta += Offset(delta.x / scale, delta.y / scale)
-                                    }
+                                    sizeDelta += Offset(delta.x / scale, delta.y / scale)
                                 } else if (activeElementId != null) {
                                     dragDelta += Offset(delta.x / scale, delta.y / scale)
                                 } else if (isDraggingCanvas) {
@@ -190,36 +197,31 @@ fun ConceptCanvas(
                         }
                     } while (event.changes.fastAny { it.pressed })
 
-                    // 確定処理
                     if (activeElementId != null) {
                         val element = currentElements.find { it.id == activeElementId }
                         if (element != null) {
                             if (isRotating) {
                                 currentOnElementUpdate(element.copy(rotation = (element.rotation + rotationDelta) % 360f))
                             } else if (isResizing && sizeDelta != Offset.Zero) {
-                                val newWidth = currentOnSnapToGrid((element.width + sizeDelta.x).coerceAtLeast(50f))
-                                val newHeight = currentOnSnapToGrid((element.height + sizeDelta.y).coerceAtLeast(50f))
-                                
+                                val b = getElementBounds(element, sizeDelta)
                                 val updated = if (element.type == "TEXT") {
-                                    // テキストはフォントサイズと連動。実際の描画サイズを計測してwidth/heightを決める
-                                    val newFontSize = (element.fontSize + sizeDelta.y).coerceAtLeast(10f)
-                                    val layoutResult = textMeasurer.measure(
-                                        text = element.text,
-                                        style = androidx.compose.ui.text.TextStyle(fontSize = newFontSize.sp)
-                                    )
                                     element.copy(
-                                        fontSize = newFontSize,
-                                        width = layoutResult.size.width.toFloat(),
-                                        height = layoutResult.size.height.toFloat()
+                                        fontSize = (element.fontSize + sizeDelta.y).coerceAtLeast(10f),
+                                        width = b.width,
+                                        height = b.height
                                     )
                                 } else {
-                                    element.copy(width = newWidth, height = newHeight)
+                                    element.copy(
+                                        width = currentOnSnapToGrid(b.width),
+                                        height = currentOnSnapToGrid(b.height)
+                                    )
                                 }
                                 currentOnElementUpdate(updated)
                             } else if (!isResizing && dragDelta != Offset.Zero) {
-                                val newX = currentOnSnapToGrid(element.x + dragDelta.x)
-                                val newY = currentOnSnapToGrid(element.y + dragDelta.y)
-                                currentOnElementUpdate(element.copy(x = newX, y = newY))
+                                currentOnElementUpdate(element.copy(
+                                    x = currentOnSnapToGrid(element.x + dragDelta.x),
+                                    y = currentOnSnapToGrid(element.y + dragDelta.y)
+                                ))
                             }
                         }
                     }
@@ -241,11 +243,8 @@ fun ConceptCanvas(
                 }
             }
     ) {
-        if (isGridEnabled) {
-            drawGrid(offset, scale)
-        }
+        if (isGridEnabled) drawGrid(offset, scale)
 
-        // ハードウェア加速を最大限活かす DrawScope での描画
         withTransform({
             translate(offset.x, offset.y)
             scale(scale, scale, Offset.Zero)
@@ -258,110 +257,92 @@ fun ConceptCanvas(
                 val alpha = if (isDragging || isBeingResized || isBeingRotated) 0.7f else 1.0f
                 val color = Color(element.color).copy(alpha = alpha)
                 
-                // ドラッグ/リサイズ中のプレビューでもスナップを適用
-                val rawX = if (isDragging) element.x + dragDelta.x else element.x
-                val rawY = if (isDragging) element.y + dragDelta.y else element.y
-                val renderX = if (isDragging) currentOnSnapToGrid(rawX) else rawX
-                val renderY = if (isDragging) currentOnSnapToGrid(rawY) else rawY
+                val renderX = if (isDragging) currentOnSnapToGrid(element.x + dragDelta.x) else element.x
+                val renderY = if (isDragging) currentOnSnapToGrid(element.y + dragDelta.y) else element.y
 
-                val renderSize = if (isBeingResized && element.type == "TEXT") {
-                    (element.fontSize + sizeDelta.y).coerceAtLeast(10f)
-                } else element.fontSize
-
-                var renderW = if (isBeingResized) currentOnSnapToGrid((element.width + sizeDelta.x).coerceAtLeast(50f)) else element.width
-                var renderH = if (isBeingResized) currentOnSnapToGrid((element.height + sizeDelta.y).coerceAtLeast(50f)) else element.height
-                
-                // テキストの場合、リサイズ中はフォントサイズに合わせて枠を再計算
-                if (element.type == "TEXT" && isBeingResized) {
-                    val layout = textMeasurer.measure(element.text, androidx.compose.ui.text.TextStyle(fontSize = renderSize.sp))
-                    renderW = layout.size.width.toFloat()
-                    renderH = layout.size.height.toFloat()
-                }
+                val currentSizeDelta = if (isBeingResized) sizeDelta else Offset.Zero
+                val b = getElementBounds(element, currentSizeDelta)
+                val renderW = b.width
+                val renderH = b.height
+                val renderSize = if (isBeingResized && element.type == "TEXT") (element.fontSize + sizeDelta.y).coerceAtLeast(10f) else element.fontSize
 
                 val renderRotation = if (isBeingRotated) element.rotation + rotationDelta else element.rotation
                 val renderCenter = Offset(renderX + renderW / 2, renderY + renderH / 2)
+                val safeScale = if (scale > 0.001f) scale else 1f
 
-                withTransform({
-                    rotate(renderRotation, renderCenter)
-                }) {
+                withTransform({ rotate(renderRotation, renderCenter) }) {
                     when (element.type) {
-                        "RECTANGLE" -> {
-                            drawRect(
-                                color = color,
-                                topLeft = Offset(renderX, renderY),
-                                size = Size(renderW, renderH)
-                            )
-                        }
-                        "CIRCLE" -> {
-                            drawCircle(
-                                color = color,
-                                center = Offset(renderX + renderW / 2, renderY + renderH / 2),
-                                radius = renderW / 2
-                            )
-                        }
-                        "ARROW" -> {
-                            drawArrow(renderX, renderY, renderX + renderW, renderY + renderH, color)
-                        }
+                        "RECTANGLE" -> drawRect(
+                            color = color,
+                            topLeft = Offset(renderX, renderY),
+                            size = Size(renderW, renderH)
+                        )
+                        "CIRCLE" -> drawCircle(
+                            color = color,
+                            radius = renderW / 2,
+                            center = renderCenter
+                        )
+                        "ARROW" -> drawArrow(
+                            x1 = renderX,
+                            y1 = renderY + renderH / 2,
+                            x2 = renderX + renderW,
+                            y2 = renderY + renderH / 2,
+                            color = color
+                        )
                         "TEXT" -> {
-                            // テキストが画面外で強制的に折り返されないように、十分な幅のConstraintsを指定
-                            val layoutResult = textMeasurer.measure(
+                            val layout = textMeasurer.measure(
                                 text = element.text,
-                                style = androidx.compose.ui.text.TextStyle(
-                                    color = color,
-                                    fontSize = renderSize.sp
-                                ),
+                                style = androidx.compose.ui.text.TextStyle(color = color, fontSize = renderSize.sp),
                                 softWrap = false,
                                 constraints = androidx.compose.ui.unit.Constraints(maxWidth = 10000)
                             )
                             drawText(
-                                textLayoutResult = layoutResult,
+                                textLayoutResult = layout,
                                 topLeft = Offset(renderX, renderY)
                             )
                         }
                     }
                 }
+
+                // クラウド共有中のインジケーター（雲アイコン）
+                if (element.isShared) {
+                    val cloudIconSize = 24f / safeScale
+                    val cx = renderX + renderW - cloudIconSize
+                    val cy = renderY - cloudIconSize
+                    
+                    drawCircle(
+                        color = Color.LightGray,
+                        radius = cloudIconSize / 2,
+                        center = Offset(cx, cy)
+                    )
+                    // シンプルな雲の形（3つの丸）を擬似的に描画
+                    drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx - 5f / safeScale, cy))
+                    drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx + 5f / safeScale, cy))
+                }
                 
                 if (element == selectedElement) {
                     val safeScale = if (scale > 0.001f) scale else 1f
-                    
-                    withTransform({
-                        rotate(renderRotation, renderCenter)
-                    }) {
-                        // 選択枠
+                    withTransform({ rotate(renderRotation, renderCenter) }) {
                         drawRect(
                             color = selectionColor,
                             topLeft = Offset(renderX, renderY),
                             size = Size(renderW, renderH),
                             style = Stroke(width = 4f / safeScale)
                         )
-                        // リサイズハンドル
                         drawRect(
                             color = selectionColor,
                             topLeft = Offset(renderX + renderW - (20f / safeScale), renderY + renderH - (20f / safeScale)),
                             size = Size(40f / safeScale, 40f / safeScale)
                         )
                     }
-
-                    // 回転ハンドル本体 (中心に配置)
-                    val handleCenter = renderCenter
+                    val handleCenter = rotatePoint(Offset(renderX + renderW / 2, renderY - (60f / safeScale)), renderCenter, renderRotation)
                     drawCircle(
                         color = selectionColor,
-                        center = handleCenter,
-                        radius = 25f / safeScale
+                        radius = 25f / safeScale,
+                        center = handleCenter
                     )
-                    // 回転アイコン風の十字を描画
-                    drawLine(
-                        color = Color.White,
-                        start = Offset(handleCenter.x - 10f / safeScale, handleCenter.y),
-                        end = Offset(handleCenter.x + 10f / safeScale, handleCenter.y),
-                        strokeWidth = 2f / safeScale
-                    )
-                    drawLine(
-                        color = Color.White,
-                        start = Offset(handleCenter.x, handleCenter.y - 10f / safeScale),
-                        end = Offset(handleCenter.x, handleCenter.y + 10f / safeScale),
-                        strokeWidth = 2f / safeScale
-                    )
+                    drawLine(Color.White, Offset(handleCenter.x - 10f / safeScale, handleCenter.y), Offset(handleCenter.x + 10f / safeScale, handleCenter.y), 2f / safeScale)
+                    drawLine(Color.White, Offset(handleCenter.x, handleCenter.y - 10f / safeScale), Offset(handleCenter.x, handleCenter.y + 10f / safeScale), 2f / safeScale)
                 }
             }
         }
@@ -370,17 +351,12 @@ fun ConceptCanvas(
 
 private fun DrawScope.drawGrid(offset: Offset, scale: Float) {
     val gridSize = 50f * scale
-    val startX = offset.x % gridSize
-    val startY = offset.y % gridSize
-    
     val dotColor = Color.LightGray.copy(alpha = 0.5f)
-    val dotRadius = 2f
-    
-    var x = startX
+    var x = offset.x % gridSize
     while (x < size.width) {
-        var y = startY
+        var y = offset.y % gridSize
         while (y < size.height) {
-            drawCircle(dotColor, radius = dotRadius, center = Offset(x, y))
+            drawCircle(dotColor, 2f, Offset(x, y))
             y += gridSize
         }
         x += gridSize
@@ -388,72 +364,65 @@ private fun DrawScope.drawGrid(offset: Offset, scale: Float) {
 }
 
 private fun DrawScope.drawArrow(x1: Float, y1: Float, x2: Float, y2: Float, color: Color) {
-    val headSize = 30f
+    val headSize = 40f // Enlarged from 30f
     val angle = atan2(y2 - y1, x2 - x1)
     
-    // 主線
-    drawLine(
-        color = color,
-        start = Offset(x1, y1),
-        end = Offset(x2, y2),
-        strokeWidth = 10f
-    )
+    // Main shaft
+    drawLine(color, Offset(x1, y1), Offset(x2, y2), 10f)
     
-    // 矢印の頭
+    // Sharp arrowhead path
     val path = Path().apply {
         moveTo(x2, y2)
         lineTo(
-            x2 - headSize * cos(angle - 0.5f).toFloat(),
-            y2 - headSize * sin(angle - 0.5f).toFloat()
+            x2 - headSize * cos(angle - 0.4f), 
+            y2 - headSize * sin(angle - 0.4f)
+        )
+        // Add a slight notch at the back for a "stealth/sharp" look
+        lineTo(
+            x2 - (headSize * 0.7f) * cos(angle), 
+            y2 - (headSize * 0.7f) * sin(angle)
         )
         lineTo(
-            x2 - headSize * cos(angle + 0.5f).toFloat(),
-            y2 - headSize * sin(angle + 0.5f).toFloat()
+            x2 - headSize * cos(angle + 0.4f), 
+            y2 - headSize * sin(angle + 0.4f)
         )
         close()
     }
+    
+    // Fill the arrowhead
     drawPath(path, color)
-}
-
-private fun CanvasElement.center(): Offset {
-    return Offset(x + width / 2, y + height / 2)
+    
+    // Add a white outline to the arrowhead to make it pop
+    drawPath(
+        path = path,
+        color = Color.White,
+        style = Stroke(width = 2f)
+    )
 }
 
 private fun rotatePoint(point: Offset, center: Offset, angleDegrees: Float): Offset {
     val angleRad = Math.toRadians(angleDegrees.toDouble())
-    val cosA = cos(angleRad)
-    val sinA = sin(angleRad)
-    val dx = point.x - center.x
-    val dy = point.y - center.y
-    return Offset(
-        (center.x + dx * cosA - dy * sinA).toFloat(),
-        (center.y + dx * sinA + dy * cosA).toFloat()
-    )
+    val cosA = cos(angleRad); val sinA = sin(angleRad)
+    val dx = point.x - center.x; val dy = point.y - center.y
+    return Offset((center.x + dx * cosA - dy * sinA).toFloat(), (center.y + dx * sinA + dy * cosA).toFloat())
 }
 
-private fun CanvasElement.contains(cx: Float, cy: Float): Boolean {
-    // 回転を考慮した当たり判定
-    val center = center()
-    val rotatedPoint = rotatePoint(Offset(cx, cy), center, -rotation)
-    return rotatedPoint.x >= x && rotatedPoint.x <= x + width &&
-           rotatedPoint.y >= y && rotatedPoint.y <= y + height
+private fun contains(el: CanvasElement, cx: Float, cy: Float, bounds: Rect): Boolean {
+    val rotatedPoint = rotatePoint(Offset(cx, cy), bounds.center, -el.rotation)
+    val minHit = 48f
+    val hitW = bounds.width.coerceAtLeast(minHit); val hitH = bounds.height.coerceAtLeast(minHit)
+    val left = bounds.left - (hitW - bounds.width) / 2; val top = bounds.top - (hitH - bounds.height) / 2
+    return rotatedPoint.x >= left && rotatedPoint.x <= left + hitW && rotatedPoint.y >= top && rotatedPoint.y <= top + hitH
 }
 
-private fun isOnHandle(element: CanvasElement, cx: Float, cy: Float): Boolean {
-    val handleSize = 40f
-    val center = element.center()
-    val rotatedPoint = rotatePoint(Offset(cx, cy), center, -element.rotation)
-    val hx = element.x + element.width
-    val hy = element.y + element.height
-    return rotatedPoint.x >= hx - handleSize && rotatedPoint.x <= hx + handleSize &&
-           rotatedPoint.y >= hy - handleSize && rotatedPoint.y <= hy + handleSize
+private fun isOnHandle(el: CanvasElement, cx: Float, cy: Float, bounds: Rect): Boolean {
+    val rotatedPoint = rotatePoint(Offset(cx, cy), bounds.center, -el.rotation)
+    val hs = 40f
+    return rotatedPoint.x >= bounds.right - hs && rotatedPoint.x <= bounds.right + hs && rotatedPoint.y >= bounds.bottom - hs && rotatedPoint.y <= bounds.bottom + hs
 }
 
-private fun isOnRotationHandle(element: CanvasElement, cx: Float, cy: Float): Boolean {
-    val handleSize = 50f
-    val center = element.center()
-    
-    val dx = cx - center.x
-    val dy = cy - center.y
-    return (dx * dx + dy * dy) <= handleSize * handleSize
+private fun isOnRotationHandle(el: CanvasElement, cx: Float, cy: Float, bounds: Rect): Boolean {
+    val handlePos = rotatePoint(Offset(bounds.left + bounds.width / 2, bounds.top - 60f), bounds.center, el.rotation)
+    val dx = cx - handlePos.x; val dy = cy - handlePos.y
+    return (dx * dx + dy * dy) <= 50f * 50f
 }

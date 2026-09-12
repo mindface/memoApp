@@ -1,5 +1,6 @@
 package com.example.memoapp.model
 
+import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.PropertyName
 import java.io.Serializable
 
@@ -26,5 +27,11 @@ data class Concept(
     var lastViewY: Float = 0f,
 
     @get:PropertyName("last_view_scale") @set:PropertyName("last_view_scale")
-    var lastViewScale: Float = 1f
+    var lastViewScale: Float = 1f,
+
+    @get:Exclude @set:Exclude
+    var isLocalOnly: Boolean = false,
+
+    @get:PropertyName("has_shared_content") @set:PropertyName("has_shared_content")
+    var hasSharedContent: Boolean = false
 ) : Serializable

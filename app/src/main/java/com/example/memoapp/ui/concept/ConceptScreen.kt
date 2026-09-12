@@ -23,9 +23,13 @@ fun ConceptScreen(
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
     val selectedElement by viewModel.selectedElement.collectAsStateWithLifecycle()
+    val canPaste by viewModel.canPaste.collectAsStateWithLifecycle()
     val viewOffset by viewModel.viewOffset.collectAsStateWithLifecycle()
     val viewScale by viewModel.viewScale.collectAsStateWithLifecycle()
     val isGridEnabled by viewModel.isGridEnabled.collectAsStateWithLifecycle()
+    val isLocalOnly by viewModel.isLocalOnly.collectAsStateWithLifecycle()
+    val showDetailModal by viewModel.showDetailModal.collectAsStateWithLifecycle()
+    val availableSymbols by viewModel.availableSymbols.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // 保存・エクスポート結果のトースト表示
@@ -48,7 +52,12 @@ fun ConceptScreen(
         bottomBar = {
             ConceptBottomBar(
                 selectedElement = selectedElement,
+                canPaste = canPaste,
                 onDelete = { viewModel.deleteSelectedElement() },
+                onCopy = { viewModel.copySelectedElement() },
+                onPaste = { viewModel.pasteElement() },
+                onToggleShare = { viewModel.toggleElementSharing() },
+                onShowDetail = { viewModel.setShowDetailModal(true) },
                 onSendToBack = { viewModel.sendSelectedToBack() },
                 onBringToFront = { viewModel.bringSelectedToFront() },
                 onPickColor = onShowColorPicker,
@@ -63,6 +72,7 @@ fun ConceptScreen(
                 .padding(innerPadding)
                 .background(Color(0xFFF5F5F5))
         ) {
+            // ... (ConceptCanvas and ConceptToolbar)
             ConceptCanvas(
                 elements = elements,
                 selectedElement = selectedElement,
@@ -89,9 +99,9 @@ fun ConceptScreen(
                 isGridEnabled = isGridEnabled,
                 onModeChange = { viewModel.setMode(it) },
                 onToggleGrid = { viewModel.toggleGrid() },
-                onSave = { viewModel.saveCanvasElements() },
+                onSaveLocal = { viewModel.saveLocalOnly(context) },
+                onSaveFirebase = { viewModel.saveToFirebase(context) },
                 onExportImage = { viewModel.exportCanvasAsImage(context) },
-                onClear = { viewModel.clearCanvas() },
                 modifier = Modifier.align(Alignment.TopStart)
             )
 
@@ -104,6 +114,31 @@ fun ConceptScreen(
                     .padding(4.dp),
                 color = Color.White
             )
+
+            if (showDetailModal && selectedElement != null) {
+                ConceptDetailModal(
+                    selectedElement = selectedElement!!,
+                    availableSymbols = availableSymbols,
+                    onToggleShare = { viewModel.toggleElementSharing() },
+                    onInsertSymbol = { viewModel.insertSymbolText(it) },
+                    onCopyText = { text ->
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("concept_text", text)
+                        clipboard.setPrimaryClip(clip)
+                        android.widget.Toast.makeText(context, "コピーしました", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    onShareText = { text ->
+                        val sendIntent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            putExtra(android.content.Intent.EXTRA_TEXT, text)
+                            type = "text/plain"
+                        }
+                        val shareIntent = android.content.Intent.createChooser(sendIntent, null)
+                        context.startActivity(shareIntent)
+                    },
+                    onDismiss = { viewModel.setShowDetailModal(false) }
+                )
+            }
         }
     }
 }
