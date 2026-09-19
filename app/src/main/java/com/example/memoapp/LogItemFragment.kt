@@ -6,6 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ScaleGestureDetector
 import android.view.MotionEvent
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,16 +71,54 @@ class LogItemFragment : Fragment() {
             if (showModal) {
                 LogItemDetailModal(
                     isShared = isSharedState,
+                    noteContent = binding.editLogItemContent.text.toString(),
                     onToggleShare = { shared ->
                         isSharedState = shared
                         syncLogItemToCloud(shared)
                     },
                     onSymbolize = { symbolizeCurrentNote() },
                     onShareExternally = { shareExternally() },
+                    onPopOut = { checkOverlayPermissionAndStart() },
+                    onCopy = { text ->
+                        val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("note", text)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "コピーしました", Toast.LENGTH_SHORT).show()
+                        showModal = false
+                    },
                     onDismiss = { showModal = false }
                 )
             }
         }
+    }
+
+    private fun checkOverlayPermissionAndStart() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(requireContext())) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${requireContext().packageName}")
+            )
+            startActivity(intent)
+            Toast.makeText(context, "他のアプリの上に重ねて表示を許可してください", Toast.LENGTH_LONG).show()
+        } else {
+            startFloatingNote()
+        }
+    }
+
+    private fun startFloatingNote() {
+        val title = binding.editLogItemTitle.text.toString()
+        val content = binding.editLogItemContent.text.toString()
+        val id = existingItem?.id ?: ""
+        
+        val intent = Intent(requireContext(), com.example.memoapp.service.FloatingNoteService::class.java).apply {
+            putExtra("id", id)
+            putExtra("title", title)
+            putExtra("content", content)
+        }
+        requireContext().startService(intent)
+        showModal = false
+        // Optionally navigate up if we want to "leave" the app but keep the note
+        // findNavController().navigateUp()
     }
 
     private fun syncLogItemToCloud(shared: Boolean) {

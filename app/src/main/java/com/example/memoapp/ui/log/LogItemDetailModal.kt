@@ -13,9 +13,12 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LogItemDetailModal(
     isShared: Boolean,
+    noteContent: String,
     onToggleShare: (Boolean) -> Unit,
     onSymbolize: () -> Unit,
     onShareExternally: () -> Unit,
+    onPopOut: () -> Unit,
+    onCopy: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -33,6 +36,34 @@ fun LogItemDetailModal(
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(16.dp)
             )
+
+            // Actions Group
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { onCopy(noteContent) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_edit), contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("コピー")
+                }
+                
+                Button(
+                    onClick = { onPopOut() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_slideshow), contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("小窓")
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // Firebase Cloud Sync
             ListItem(
