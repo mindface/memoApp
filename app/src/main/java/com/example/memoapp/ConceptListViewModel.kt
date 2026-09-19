@@ -1,21 +1,37 @@
 package com.example.memoapp
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.memoapp.model.Concept
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 
-class ConceptListViewModel : ViewModel() {
+class ConceptListViewModel(application: Application) : AndroidViewModel(application) {
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val localRepo = ConceptLocalRepository(application)
 
-    private val _concepts = MutableStateFlow<List<Concept>>(emptyList())
-    val concepts: StateFlow<List<Concept>> = _concepts.asStateFlow()
+    private val _cloudConcepts = MutableStateFlow<List<Concept>>(emptyList())
+    
+    val concepts: StateFlow<List<Concept>> = _cloudConcepts.combine(
+        MutableStateFlow(Unit) // dummy to trigger refresh
+    ) { cloudList, _ ->
+        val localItems = localRepo.getAllLocalData()
+        val mergedMap = cloudList.associateBy { it.id }.toMutableMap()
+        
+        localItems.forEach { local ->
+            val existing = mergedMap[local.concept.id]
+            if (existing == null || local.concept.updatedAt > existing.updatedAt) {
+                mergedMap[local.concept.id] = local.concept.copy(isLocalOnly = true)
+            }
+        }
+        
+        mergedMap.values.toList().sortedByDescending { it.updatedAt }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         fetchConcepts()
@@ -34,7 +50,7 @@ class ConceptListViewModel : ViewModel() {
                         null
                     }
                 }
-                _concepts.value = list.sortedByDescending { it.updatedAt }
+                _cloudConcepts.value = list
             }
     }
 

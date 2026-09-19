@@ -6,11 +6,23 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ScaleGestureDetector
 import android.view.MotionEvent
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.memoapp.databinding.FragmentLogItemBinding
 import com.example.memoapp.model.LogItem
+import com.example.memoapp.model.Symbol
+import com.example.memoapp.ui.log.LogItemDetailModal
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
 class LogItemFragment : Fragment() {
     private var _binding: FragmentLogItemBinding? = null
@@ -20,6 +32,9 @@ class LogItemFragment : Fragment() {
 
     private var currentTextSize = 16f
     private lateinit var scaleGestureDetector: ScaleGestureDetector
+
+    private var showModal by mutableStateOf(false)
+    private var isSharedState by mutableStateOf(false)
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -40,11 +55,127 @@ class LogItemFragment : Fragment() {
             existingItem?.let {
                 binding.editLogItemTitle.setText(it.title)
                 binding.editLogItemContent.setText(it.content)
+                isSharedState = it.isShared
             }
         }
 
         binding.buttonSaveLogItem.setOnClickListener { saveLogItem() }
         binding.buttonCancelLogItem.setOnClickListener { findNavController().navigateUp() }
+        binding.buttonLogItemInfo.setOnClickListener { showModal = true }
+
+        setupModal()
+    }
+
+    private fun setupModal() {
+        binding.composeViewModal.setContent {
+            if (showModal) {
+                LogItemDetailModal(
+                    isShared = isSharedState,
+                    noteContent = binding.editLogItemContent.text.toString(),
+                    onToggleShare = { shared ->
+                        isSharedState = shared
+                        syncLogItemToCloud(shared)
+                    },
+                    onSymbolize = { symbolizeCurrentNote() },
+                    onShareExternally = { shareExternally() },
+                    onPopOut = { checkOverlayPermissionAndStart() },
+                    onCopy = { text ->
+                        val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("note", text)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "コピーしました", Toast.LENGTH_SHORT).show()
+                        showModal = false
+                    },
+                    onDismiss = { showModal = false }
+                )
+            }
+        }
+    }
+
+    private fun checkOverlayPermissionAndStart() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(requireContext())) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${requireContext().packageName}")
+            )
+            startActivity(intent)
+            Toast.makeText(context, "他のアプリの上に重ねて表示を許可してください", Toast.LENGTH_LONG).show()
+        } else {
+            startFloatingNote()
+        }
+    }
+
+    private fun startFloatingNote() {
+        val title = binding.editLogItemTitle.text.toString()
+        val content = binding.editLogItemContent.text.toString()
+        val id = existingItem?.id ?: ""
+        
+        val intent = Intent(requireContext(), com.example.memoapp.service.FloatingNoteService::class.java).apply {
+            putExtra("id", id)
+            putExtra("title", title)
+            putExtra("content", content)
+        }
+        requireContext().startService(intent)
+        showModal = false
+        // Optionally navigate up if we want to "leave" the app but keep the note
+        // findNavController().navigateUp()
+    }
+
+    private fun syncLogItemToCloud(shared: Boolean) {
+        FirebaseAuth.getInstance().currentUser ?: return
+        val item = existingItem ?: return // Only sync existing items for now, or save first
+        
+        val db = Firebase.firestore
+        if (shared) {
+            db.collection("log_items").document(item.id).set(
+                item.copy(isShared = true, updatedAt = System.currentTimeMillis().toString())
+            ).addOnSuccessListener {
+                Toast.makeText(context, "クラウドに同期しました", Toast.LENGTH_SHORT).show()
+                // Update local status too
+                repository.save(item.copy(isShared = true))
+            }
+        } else {
+            db.collection("log_items").document(item.id).delete()
+                .addOnSuccessListener {
+                    Toast.makeText(context, "クラウドから削除しました", Toast.LENGTH_SHORT).show()
+                    repository.save(item.copy(isShared = false))
+                }
+        }
+    }
+
+    private fun symbolizeCurrentNote() {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        val title = binding.editLogItemTitle.text.toString()
+        val content = binding.editLogItemContent.text.toString()
+        
+        val symbol = Symbol(
+            id = Firebase.firestore.collection("symbols").document().id,
+            userId = user.uid,
+            title = title.ifBlank { "ノートからのシンボル" },
+            content = content,
+            created_at = System.currentTimeMillis().toString(),
+            updated_at = System.currentTimeMillis().toString()
+        )
+
+        Firebase.firestore.collection("symbols").document(symbol.id).set(symbol)
+            .addOnSuccessListener {
+                Toast.makeText(context, "シンボルとして保存しました", Toast.LENGTH_SHORT).show()
+                showModal = false
+            }
+    }
+
+    private fun shareExternally() {
+        val title = binding.editLogItemTitle.text.toString()
+        val content = binding.editLogItemContent.text.toString()
+        val shareText = "# $title\n\n$content"
+
+        val sendIntent = android.content.Intent().apply {
+            action = android.content.Intent.ACTION_SEND
+            putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+            type = "text/plain"
+        }
+        val shareIntent = android.content.Intent.createChooser(sendIntent, null)
+        startActivity(shareIntent)
     }
 
     private fun setupZoomGestures() {
@@ -86,12 +217,14 @@ class LogItemFragment : Fragment() {
                     val updated = item.copy(
                         title = title,
                         content = content,
+                        isShared = isSharedState,
                         updatedAt = System.currentTimeMillis().toString()
                     )
                     repository.save(updated)
                     updated
                 } else {
-                    repository.create(title, content)
+                    val created = repository.create(title, content)
+                    created.copy(isShared = isSharedState).also { repository.save(it) }
                 }
             }
             activity?.runOnUiThread {

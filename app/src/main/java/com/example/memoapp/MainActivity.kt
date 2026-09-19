@@ -11,6 +11,7 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
 import com.example.memoapp.databinding.ActivityMainBinding
+import com.example.memoapp.security.AppIntegrityManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,6 +20,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Perform security integrity check
+        AppIntegrityManager.checkIntegrity(this)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

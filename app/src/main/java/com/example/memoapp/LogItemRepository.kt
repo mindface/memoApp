@@ -62,6 +62,7 @@ class LogItemRepository(context: Context) {
         val id = metadata["id"] ?: ""
         val createdAt = metadata["createdAt"] ?: ""
         val updatedAt = metadata["updatedAt"] ?: ""
+        val isShared = metadata["isShared"]?.toBoolean() ?: false
 
         val bodyLines = lines.subList(headerEnd + 1, lines.size)
         val titleLineIndex = bodyLines.indexOfFirst { it.startsWith("# ") }
@@ -81,7 +82,7 @@ class LogItemRepository(context: Context) {
         
         val content = contentLines.joinToString("\n")
 
-        return LogItem(id, title, content, createdAt, updatedAt)
+        return LogItem(id, title, content, createdAt, updatedAt, isShared)
     }
 
     private fun LogItem.toMarkdown(): String = buildString {
@@ -89,6 +90,7 @@ class LogItemRepository(context: Context) {
         appendLine("id: $id")
         appendLine("createdAt: $createdAt")
         appendLine("updatedAt: $updatedAt")
+        appendLine("isShared: $isShared")
         appendLine("---")
         appendLine()
         appendLine("# ${title.ifBlank { "無題" }}")

@@ -4,7 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,7 +18,12 @@ import com.example.memoapp.model.CanvasElement
 @Composable
 fun ConceptBottomBar(
     selectedElement: CanvasElement?,
+    canPaste: Boolean,
     onDelete: () -> Unit,
+    onCopy: () -> Unit,
+    onPaste: () -> Unit,
+    onToggleShare: () -> Unit,
+    onShowDetail: () -> Unit,
     onSendToBack: () -> Unit,
     onBringToFront: () -> Unit,
     onPickColor: () -> Unit,
@@ -24,8 +31,10 @@ fun ConceptBottomBar(
     onChangeFontSize: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+
     AnimatedVisibility(
-        visible = selectedElement != null,
+        visible = selectedElement != null || canPaste,
         enter = slideInVertically(initialOffsetY = { it }),
         exit = slideOutVertically(targetOffsetY = { it }),
         modifier = modifier
@@ -33,7 +42,7 @@ fun ConceptBottomBar(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding() // システムバーとの重なりを防止
+                .navigationBarsPadding()
                 .padding(16.dp),
             shadowElevation = 8.dp,
             color = Color.White,
@@ -42,56 +51,103 @@ fun ConceptBottomBar(
             Row(
                 modifier = Modifier
                     .padding(8.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ToolbarButton(
-                    iconRes = android.R.drawable.ic_menu_delete,
-                    contentDescription = "Delete",
-                    onClick = onDelete
-                )
-                
-                // 重なり順操作
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Group: Edit
+                if (selectedElement != null) {
                     ToolbarButton(
-                        iconRes = android.R.drawable.ic_menu_revert,
-                        contentDescription = "Send to Back",
-                        onClick = onSendToBack
+                        iconRes = android.R.drawable.ic_menu_delete,
+                        contentDescription = "Delete",
+                        onClick = onDelete
                     )
-                    Text(
-                        text = "L${selectedElement?.zIndex ?: 0}",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_share,
+                        contentDescription = "Copy",
+                        onClick = onCopy
                     )
+                    
+                    // Firebase Toggle (Cloud Icon)
                     ToolbarButton(
                         iconRes = android.R.drawable.ic_menu_upload,
-                        contentDescription = "Bring to Front",
-                        onClick = onBringToFront
+                        contentDescription = "Firebase Toggle",
+                        isSelected = selectedElement.isShared,
+                        onClick = onToggleShare
+                    )
+
+                    // Detail/Info Button
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_info_details,
+                        contentDescription = "More Info",
+                        onClick = onShowDetail
+                    )
+                }
+                
+                if (canPaste) {
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_input_add,
+                        contentDescription = "Paste",
+                        onClick = onPaste
                     )
                 }
 
-                ToolbarButton(
-                    iconRes = android.R.drawable.ic_menu_manage,
-                    contentDescription = "Color",
-                    onClick = onPickColor
-                )
-
-                if (selectedElement?.type == "TEXT") {
+                if (selectedElement != null) {
                     VerticalDivider(modifier = Modifier.height(32.dp))
-                    
-                    ToolbarButton(
-                        iconRes = android.R.drawable.ic_menu_edit,
-                        contentDescription = "Edit Text",
-                        onClick = onEditSelected
-                    )
-                    
-                    // Simple text for font controls as we don't have good system icons for A+ / A-
-                    Button(onClick = { onChangeFontSize(10f) }) {
-                        Text("+")
+
+                    // Group: Layers
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ToolbarButton(
+                            iconRes = android.R.drawable.ic_menu_revert,
+                            contentDescription = "Send to Back",
+                            onClick = onSendToBack
+                        )
+                        Text(
+                            text = "L${selectedElement.zIndex}",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                        ToolbarButton(
+                            iconRes = android.R.drawable.ic_menu_upload,
+                            contentDescription = "Bring to Front",
+                            onClick = onBringToFront
+                        )
                     }
-                    Button(onClick = { onChangeFontSize(-10f) }) {
-                        Text("-")
+
+                    VerticalDivider(modifier = Modifier.height(32.dp))
+
+                    // Group: Style
+                    ToolbarButton(
+                        iconRes = android.R.drawable.ic_menu_manage,
+                        contentDescription = "Color",
+                        onClick = onPickColor
+                    )
+
+                    if (selectedElement.type == "TEXT") {
+                        ToolbarButton(
+                            iconRes = android.R.drawable.ic_menu_edit,
+                            contentDescription = "Edit Text",
+                            onClick = onEditSelected
+                        )
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Button(
+                                onClick = { onChangeFontSize(10f) },
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text("+")
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            Button(
+                                onClick = { onChangeFontSize(-10f) },
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text("-")
+                            }
+                        }
                     }
                 }
             }
