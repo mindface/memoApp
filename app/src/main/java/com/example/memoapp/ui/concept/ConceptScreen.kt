@@ -28,8 +28,9 @@ fun ConceptScreen(
     val viewScale by viewModel.viewScale.collectAsStateWithLifecycle()
     val isGridEnabled by viewModel.isGridEnabled.collectAsStateWithLifecycle()
     val isLocalOnly by viewModel.isLocalOnly.collectAsStateWithLifecycle()
-    val showDetailModal by viewModel.showDetailModal.collectAsStateWithLifecycle()
+    val activeModal by viewModel.activeModal.collectAsStateWithLifecycle()
     val availableSymbols by viewModel.availableSymbols.collectAsStateWithLifecycle()
+    val quickColors = viewModel.quickColors
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // 保存・エクスポート結果のトースト表示
@@ -56,11 +57,10 @@ fun ConceptScreen(
                 onDelete = { viewModel.deleteSelectedElement() },
                 onCopy = { viewModel.copySelectedElement() },
                 onPaste = { viewModel.pasteElement() },
-                onToggleShare = { viewModel.toggleElementSharing() },
-                onShowDetail = { viewModel.setShowDetailModal(true) },
+                onShowCloudSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.CLOUD) },
+                onShowStyleSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.STYLE) },
                 onSendToBack = { viewModel.sendSelectedToBack() },
                 onBringToFront = { viewModel.bringSelectedToFront() },
-                onPickColor = onShowColorPicker,
                 onEditSelected = { selectedElement?.let { onEditSelectedText(it) } },
                 onChangeFontSize = { viewModel.changeFontSize(it) }
             )
@@ -115,29 +115,52 @@ fun ConceptScreen(
                 color = Color.White
             )
 
-            if (showDetailModal && selectedElement != null) {
-                ConceptDetailModal(
-                    selectedElement = selectedElement!!,
-                    availableSymbols = availableSymbols,
-                    onToggleShare = { viewModel.toggleElementSharing() },
-                    onInsertSymbol = { viewModel.insertSymbolText(it) },
-                    onCopyText = { text ->
-                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("concept_text", text)
-                        clipboard.setPrimaryClip(clip)
-                        android.widget.Toast.makeText(context, "コピーしました", android.widget.Toast.LENGTH_SHORT).show()
-                    },
-                    onShareText = { text ->
-                        val sendIntent = android.content.Intent().apply {
-                            action = android.content.Intent.ACTION_SEND
-                            putExtra(android.content.Intent.EXTRA_TEXT, text)
-                            type = "text/plain"
-                        }
-                        val shareIntent = android.content.Intent.createChooser(sendIntent, null)
-                        context.startActivity(shareIntent)
-                    },
-                    onDismiss = { viewModel.setShowDetailModal(false) }
-                )
+            if (selectedElement != null) {
+                when (activeModal) {
+                    com.example.memoapp.ConceptModalType.CLOUD -> {
+                        ConceptCloudModal(
+                            selectedElement = selectedElement!!,
+                            onToggleShare = { viewModel.toggleElementSharing() },
+                            onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
+                        )
+                    }
+                    com.example.memoapp.ConceptModalType.STYLE -> {
+                        ConceptStyleModal(
+                            selectedElement = selectedElement!!,
+                            availableSymbols = availableSymbols,
+                            quickColors = quickColors,
+                            onInsertSymbol = { viewModel.insertSymbolText(it) },
+                            onCopyText = { text ->
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("concept_text", text)
+                                clipboard.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(context, "コピーしました", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            onShareText = { text ->
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = android.content.Intent.createChooser(sendIntent, null)
+                                context.startActivity(shareIntent)
+                            },
+                            onUpdateBodyColor = { viewModel.updateElementBodyColor(it) },
+                            onPickBodyColor = {
+                                viewModel.setColorTarget("BODY")
+                                onShowColorPicker()
+                            },
+                            onUpdateStrokeColor = { viewModel.updateElementStrokeColor(it) },
+                            onPickStrokeColor = {
+                                viewModel.setColorTarget("STROKE")
+                                onShowColorPicker()
+                            },
+                            onUpdateDrawStyle = { viewModel.setElementDrawStyle(it) },
+                            onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
+                        )
+                    }
+                    else -> {}
+                }
             }
         }
     }

@@ -272,22 +272,52 @@ fun ConceptCanvas(
 
                 withTransform({ rotate(renderRotation, renderCenter) }) {
                     when (element.type) {
-                        "RECTANGLE" -> drawRect(
-                            color = color,
-                            topLeft = Offset(renderX, renderY),
-                            size = Size(renderW, renderH)
-                        )
-                        "CIRCLE" -> drawCircle(
-                            color = color,
-                            radius = renderW / 2,
-                            center = renderCenter
-                        )
+                        "RECTANGLE" -> {
+                            // Fill
+                            if (element.drawStyle == 0 || element.drawStyle == 1) {
+                                drawRect(
+                                    color = color,
+                                    topLeft = Offset(renderX, renderY),
+                                    size = Size(renderW, renderH)
+                                )
+                            }
+                            // Outline
+                            if (element.drawStyle == 0 || element.drawStyle == 2) {
+                                drawRect(
+                                    color = Color(element.strokeColor),
+                                    topLeft = Offset(renderX, renderY),
+                                    size = Size(renderW, renderH),
+                                    style = Stroke(width = 2f / safeScale)
+                                )
+                            }
+                        }
+                        "CIRCLE" -> {
+                            // Fill
+                            if (element.drawStyle == 0 || element.drawStyle == 1) {
+                                drawCircle(
+                                    color = color,
+                                    radius = renderW / 2,
+                                    center = renderCenter
+                                )
+                            }
+                            // Outline
+                            if (element.drawStyle == 0 || element.drawStyle == 2) {
+                                drawCircle(
+                                    color = Color(element.strokeColor),
+                                    radius = renderW / 2,
+                                    center = renderCenter,
+                                    style = Stroke(width = 2f / safeScale)
+                                )
+                            }
+                        }
                         "ARROW" -> drawArrow(
                             x1 = renderX,
                             y1 = renderY + renderH / 2,
                             x2 = renderX + renderW,
                             y2 = renderY + renderH / 2,
-                            color = color
+                            color = color,
+                            strokeColor = Color(element.strokeColor),
+                            drawStyle = element.drawStyle
                         )
                         "TEXT" -> {
                             val layout = textMeasurer.measure(
@@ -363,41 +393,32 @@ private fun DrawScope.drawGrid(offset: Offset, scale: Float) {
     }
 }
 
-private fun DrawScope.drawArrow(x1: Float, y1: Float, x2: Float, y2: Float, color: Color) {
-    val headSize = 40f // Enlarged from 30f
+private fun DrawScope.drawArrow(x1: Float, y1: Float, x2: Float, y2: Float, color: Color, strokeColor: Color, drawStyle: Int) {
+    val headSize = 40f
     val angle = atan2(y2 - y1, x2 - x1)
     
-    // Main shaft
-    drawLine(color, Offset(x1, y1), Offset(x2, y2), 10f)
+    // Main shaft uses stroke color
+    if (drawStyle == 0 || drawStyle == 2) {
+        drawLine(strokeColor, Offset(x1, y1), Offset(x2, y2), 10f)
+    }
     
-    // Sharp arrowhead path
     val path = Path().apply {
         moveTo(x2, y2)
-        lineTo(
-            x2 - headSize * cos(angle - 0.4f), 
-            y2 - headSize * sin(angle - 0.4f)
-        )
-        // Add a slight notch at the back for a "stealth/sharp" look
-        lineTo(
-            x2 - (headSize * 0.7f) * cos(angle), 
-            y2 - (headSize * 0.7f) * sin(angle)
-        )
-        lineTo(
-            x2 - headSize * cos(angle + 0.4f), 
-            y2 - headSize * sin(angle + 0.4f)
-        )
+        lineTo(x2 - headSize * cos(angle - 0.4f), y2 - headSize * sin(angle - 0.4f))
+        lineTo(x2 - (headSize * 0.7f) * cos(angle), y2 - (headSize * 0.7f) * sin(angle))
+        lineTo(x2 - headSize * cos(angle + 0.4f), y2 - headSize * sin(angle + 0.4f))
         close()
     }
     
-    // Fill the arrowhead
-    drawPath(path, color)
+    // Fill
+    if (drawStyle == 0 || drawStyle == 1) {
+        drawPath(path, color)
+    }
     
-    // Add a white outline to the arrowhead to make it pop
-    drawPath(
-        path = path,
-        color = Color.White,
-        style = Stroke(width = 2f)
-    )
+    // Outline
+    if (drawStyle == 0 || drawStyle == 2) {
+        drawPath(path, strokeColor, style = Stroke(width = 2f))
+    }
 }
 
 private fun rotatePoint(point: Offset, center: Offset, angleDegrees: Float): Offset {

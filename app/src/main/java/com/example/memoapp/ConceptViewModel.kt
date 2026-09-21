@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW }
+enum class ConceptModalType { NONE, CLOUD, STYLE }
 
 class ConceptViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     private val db: FirebaseFirestore = Firebase.firestore
@@ -42,6 +43,16 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     private val _selectedColor = MutableStateFlow(android.graphics.Color.BLUE)
     val selectedColor: StateFlow<Int> = _selectedColor.asStateFlow()
+
+    val quickColors = listOf(
+        android.graphics.Color.parseColor("#F44336"), // Red
+        android.graphics.Color.parseColor("#2196F3"), // Blue
+        android.graphics.Color.parseColor("#4CAF50"), // Green
+        android.graphics.Color.parseColor("#FFEB3B"), // Yellow
+        android.graphics.Color.parseColor("#FF9800"), // Orange
+        android.graphics.Color.parseColor("#000000"), // Black
+        android.graphics.Color.parseColor("#FFFFFF")  // White
+    )
 
     private val _selectedElement = MutableStateFlow<CanvasElement?>(null)
     val selectedElement: StateFlow<CanvasElement?> = _selectedElement.asStateFlow()
@@ -69,8 +80,11 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _isLocalOnly = MutableStateFlow(false)
     val isLocalOnly: StateFlow<Boolean> = _isLocalOnly.asStateFlow()
 
-    private val _showDetailModal = MutableStateFlow(false)
-    val showDetailModal: StateFlow<Boolean> = _showDetailModal.asStateFlow()
+    private val _colorTarget = MutableStateFlow("BODY") // BODY or STROKE
+    val colorTarget: StateFlow<String> = _colorTarget.asStateFlow()
+
+    private val _activeModal = MutableStateFlow(ConceptModalType.NONE)
+    val activeModal: StateFlow<ConceptModalType> = _activeModal.asStateFlow()
 
     private val _availableSymbols = MutableStateFlow<List<Symbol>>(emptyList())
     val availableSymbols: StateFlow<List<Symbol>> = _availableSymbols.asStateFlow()
@@ -86,8 +100,8 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         }
     }
 
-    fun setShowDetailModal(show: Boolean) {
-        _showDetailModal.value = show
+    fun setActiveModal(type: ConceptModalType) {
+        _activeModal.value = type
     }
 
     private fun fetchAvailableSymbols(userId: String) {
@@ -127,12 +141,20 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         _currentMode.value = mode
     }
 
+    fun setColorTarget(target: String) {
+        _colorTarget.value = target
+    }
+
     fun setSelectedColor(color: Int) {
-        _selectedColor.value = color
-        _selectedElement.value?.let { element ->
-            val updated = element.copy(color = color)
-            _selectedElement.value = updated
-            updateElement(updated)
+        if (_colorTarget.value == "STROKE") {
+            updateElementStrokeColor(color)
+        } else {
+            _selectedColor.value = color
+            _selectedElement.value?.let { element ->
+                val updated = element.copy(color = color)
+                _selectedElement.value = updated
+                updateElement(updated)
+            }
         }
     }
 
@@ -157,6 +179,41 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         }
     }
 
+    fun cycleElementStyle() {
+        _selectedElement.value?.let { element ->
+            if (element.type == "RECTANGLE" || element.type == "CIRCLE") {
+                val nextStyle = (element.drawStyle + 1) % 3
+                val updated = element.copy(drawStyle = nextStyle)
+                updateElement(updated)
+            }
+        }
+    }
+
+    fun updateElementStrokeColor(color: Int) {
+        _selectedElement.value?.let { element ->
+            val updated = element.copy(strokeColor = color)
+            updateElement(updated)
+        }
+    }
+
+    fun updateElementBodyColor(color: Int) {
+        _selectedColor.value = color
+        _selectedElement.value?.let { element ->
+            val updated = element.copy(color = color)
+            _selectedElement.value = updated
+            updateElement(updated)
+        }
+    }
+
+    fun setElementDrawStyle(style: Int) {
+        _selectedElement.value?.let { element ->
+            if (element.type == "RECTANGLE" || element.type == "CIRCLE") {
+                val updated = element.copy(drawStyle = style)
+                updateElement(updated)
+            }
+        }
+    }
+
     fun addElement(type: String, x: Float, y: Float, text: String = "") {
         val userId = auth.currentUser?.uid ?: return
         if (conceptId.isEmpty()) return
@@ -175,7 +232,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             width = if (type == "TEXT") 1f else if (type == "ARROW") 160f else 150f,
             height = if (type == "TEXT") 1f else if (type == "ARROW") 40f else 150f,
             text = text,
-            color = if (type == "TEXT") android.graphics.Color.BLACK else _selectedColor.value,
+            color = _selectedColor.value,
             zIndex = maxZ + 1
         )
         elements.add(newElement)

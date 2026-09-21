@@ -46,6 +46,12 @@ data class CanvasElement(
     @get:PropertyName("is_shared") @set:PropertyName("is_shared")
     var isShared: Boolean = false,
 
+    @get:PropertyName("draw_style") @set:PropertyName("draw_style")
+    var drawStyle: Int = 0, // 0: Fill+Stroke, 1: Fill only, 2: Stroke only
+
+    @get:PropertyName("stroke_color") @set:PropertyName("stroke_color")
+    var strokeColor: Int = 0xFF444444.toInt(),
+
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable

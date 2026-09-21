@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,11 +24,10 @@ fun ConceptBottomBar(
     onDelete: () -> Unit,
     onCopy: () -> Unit,
     onPaste: () -> Unit,
-    onToggleShare: () -> Unit,
-    onShowDetail: () -> Unit,
+    onShowCloudSettings: () -> Unit,
+    onShowStyleSettings: () -> Unit,
     onSendToBack: () -> Unit,
     onBringToFront: () -> Unit,
-    onPickColor: () -> Unit,
     onEditSelected: () -> Unit,
     onChangeFontSize: (Float) -> Unit,
     modifier: Modifier = Modifier
@@ -69,19 +70,19 @@ fun ConceptBottomBar(
                         onClick = onCopy
                     )
                     
-                    // Firebase Toggle (Cloud Icon)
+                    // Firebase Cloud Settings (Cloud Icon)
                     ToolbarButton(
                         iconRes = android.R.drawable.ic_menu_upload,
-                        contentDescription = "Firebase Toggle",
+                        contentDescription = "Cloud Settings",
                         isSelected = selectedElement.isShared,
-                        onClick = onToggleShare
+                        onClick = onShowCloudSettings
                     )
 
-                    // Detail/Info Button
+                    // Appearance Settings (Info Icon)
                     ToolbarButton(
                         iconRes = android.R.drawable.ic_menu_info_details,
-                        contentDescription = "More Info",
-                        onClick = onShowDetail
+                        contentDescription = "Appearance Settings",
+                        onClick = onShowStyleSettings
                     )
                 }
                 
@@ -116,13 +117,6 @@ fun ConceptBottomBar(
                     }
 
                     VerticalDivider(modifier = Modifier.height(32.dp))
-
-                    // Group: Style
-                    ToolbarButton(
-                        iconRes = android.R.drawable.ic_menu_manage,
-                        contentDescription = "Color",
-                        onClick = onPickColor
-                    )
 
                     if (selectedElement.type == "TEXT") {
                         ToolbarButton(
