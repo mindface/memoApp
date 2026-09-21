@@ -83,6 +83,12 @@
         <argument
             android:name="conceptId"
             app:argType="string" />
+        <action
+            android:id="@+id/action_ConceptFragment_to_LogItemFragment"
+            app:destination="@id/LogItemFragment" />
+        <action
+            android:id="@+id/action_ConceptFragment_self"
+            app:destination="@id/ConceptFragment" />
     </fragment>
 
     <fragment

@@ -18,7 +18,8 @@ fun ConceptScreen(
     viewModel: ConceptViewModel,
     onShowTextDialog: (Float, Float) -> Unit,
     onShowColorPicker: () -> Unit,
-    onEditSelectedText: (CanvasElement) -> Unit
+    onEditSelectedText: (CanvasElement) -> Unit,
+    onNavigateToItem: (itemType: String, itemId: String) -> Unit
 ) {
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
@@ -30,6 +31,9 @@ fun ConceptScreen(
     val isLocalOnly by viewModel.isLocalOnly.collectAsStateWithLifecycle()
     val activeModal by viewModel.activeModal.collectAsStateWithLifecycle()
     val availableSymbols by viewModel.availableSymbols.collectAsStateWithLifecycle()
+    val availableNotes by viewModel.availableNotes.collectAsStateWithLifecycle()
+    val availableLogItems by viewModel.availableLogItems.collectAsStateWithLifecycle()
+    val availableConcepts by viewModel.availableConcepts.collectAsStateWithLifecycle()
     val quickColors = viewModel.quickColors
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -59,6 +63,13 @@ fun ConceptScreen(
                 onPaste = { viewModel.pasteElement() },
                 onShowCloudSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.CLOUD) },
                 onShowStyleSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.STYLE) },
+                onOpenLinkedItem = { el ->
+                    el.linkedItemId?.let { id ->
+                        el.linkedItemType?.let { type ->
+                            onNavigateToItem(type, id)
+                        }
+                    }
+                },
                 onSendToBack = { viewModel.sendSelectedToBack() },
                 onBringToFront = { viewModel.bringSelectedToFront() },
                 onEditSelected = { selectedElement?.let { onEditSelectedText(it) } },
@@ -86,6 +97,10 @@ fun ConceptScreen(
                         ConceptMode.ADD_CIRCLE -> viewModel.addElement("CIRCLE", x, y)
                         ConceptMode.ADD_TEXT -> onShowTextDialog(x, y)
                         ConceptMode.ADD_ARROW -> viewModel.addElement("ARROW", x, y)
+                        ConceptMode.ADD_LINKED -> {
+                            viewModel.setInsertionPoint(x, y)
+                            viewModel.setActiveModal(com.example.memoapp.ConceptModalType.ITEM_PICKER)
+                        }
                         ConceptMode.PAN_ZOOM -> {}
                     }
                 },
@@ -156,6 +171,17 @@ fun ConceptScreen(
                                 onShowColorPicker()
                             },
                             onUpdateDrawStyle = { viewModel.setElementDrawStyle(it) },
+                            onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
+                        )
+                    }
+                    com.example.memoapp.ConceptModalType.ITEM_PICKER -> {
+                        ConceptItemPickerModal(
+                            availableNotes = availableNotes,
+                            availableLogItems = availableLogItems,
+                            availableConcepts = availableConcepts,
+                            onItemSelected = { type, id, title ->
+                                viewModel.addLinkedElement(type, id, title)
+                            },
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
                     }

@@ -6,12 +6,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import com.example.memoapp.model.CanvasElement
 import com.example.memoapp.ui.concept.ConceptScreen
 
@@ -31,7 +33,23 @@ class ConceptFragment : Fragment() {
                         viewModel = viewModel,
                         onShowTextDialog = { x, y -> showTextInputDialog(x, y) },
                         onShowColorPicker = { showColorPickerDialog() },
-                        onEditSelectedText = { element -> showEditTextViewDialog(element) }
+                        onEditSelectedText = { element -> showEditTextViewDialog(element) },
+                        onNavigateToItem = { type, id ->
+                            val bundle = Bundle()
+                            when (type) {
+                                "LOG_ITEM" -> {
+                                    bundle.putString("logItemId", id)
+                                    findNavController().navigate(R.id.action_ConceptFragment_to_LogItemFragment, bundle)
+                                }
+                                "CONCEPT" -> {
+                                    bundle.putString("conceptId", id)
+                                    findNavController().navigate(R.id.action_ConceptFragment_self, bundle)
+                                }
+                                "NOTE" -> {
+                                    Toast.makeText(context, "Note detail is currently handled in Note List", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     )
                 }
             }

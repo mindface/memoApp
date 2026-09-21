@@ -52,6 +52,12 @@ data class CanvasElement(
     @get:PropertyName("stroke_color") @set:PropertyName("stroke_color")
     var strokeColor: Int = 0xFF444444.toInt(),
 
+    @get:PropertyName("linked_item_id") @set:PropertyName("linked_item_id")
+    var linkedItemId: String? = null,
+
+    @get:PropertyName("linked_item_type") @set:PropertyName("linked_item_type")
+    var linkedItemType: String? = null, // NOTE, LOG_ITEM, CONCEPT
+
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable

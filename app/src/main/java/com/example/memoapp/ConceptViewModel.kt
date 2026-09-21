@@ -27,8 +27,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW }
-enum class ConceptModalType { NONE, CLOUD, STYLE }
+enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED }
+enum class ConceptModalType { NONE, CLOUD, STYLE, ITEM_PICKER }
 
 class ConceptViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     private val db: FirebaseFirestore = Firebase.firestore
@@ -74,6 +74,9 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _viewScale = MutableStateFlow(1f)
     val viewScale: StateFlow<Float> = _viewScale.asStateFlow()
 
+    private val _insertionPoint = MutableStateFlow(Offset.Zero)
+    val insertionPoint: StateFlow<Offset> = _insertionPoint.asStateFlow()
+
     private val _isGridEnabled = MutableStateFlow(true)
     val isGridEnabled: StateFlow<Boolean> = _isGridEnabled.asStateFlow()
 
@@ -89,14 +92,28 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _availableSymbols = MutableStateFlow<List<Symbol>>(emptyList())
     val availableSymbols: StateFlow<List<Symbol>> = _availableSymbols.asStateFlow()
 
+    private val _availableNotes = MutableStateFlow<List<com.example.memoapp.model.Note>>(emptyList())
+    val availableNotes: StateFlow<List<com.example.memoapp.model.Note>> = _availableNotes.asStateFlow()
+
+    private val _availableLogItems = MutableStateFlow<List<com.example.memoapp.model.LogItem>>(emptyList())
+    val availableLogItems: StateFlow<List<com.example.memoapp.model.LogItem>> = _availableLogItems.asStateFlow()
+
+    private val _availableConcepts = MutableStateFlow<List<Concept>>(emptyList())
+    val availableConcepts: StateFlow<List<Concept>> = _availableConcepts.asStateFlow()
+
     private var conceptMetadata: Concept? = null
     private var symbolsListener: ListenerRegistration? = null
+    private var notesListener: ListenerRegistration? = null
+    private var conceptsListener: ListenerRegistration? = null
 
     init {
         val currentUser = auth.currentUser
         if (currentUser != null) {
             fetchCanvasElements()
             fetchAvailableSymbols(currentUser.uid)
+            fetchAvailableNotes(currentUser.uid)
+            fetchAvailableConcepts(currentUser.uid)
+            fetchAvailableLogItems()
         }
     }
 
@@ -113,6 +130,75 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
                 val list = snapshots.toObjects(Symbol::class.java)
                 _availableSymbols.value = list.sortedByDescending { it.updated_at }
             }
+    }
+
+    private fun fetchAvailableNotes(userId: String) {
+        notesListener?.remove()
+        notesListener = db.collection("notes")
+            .whereEqualTo("user_id", userId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null || snapshots == null) return@addSnapshotListener
+                val list = snapshots.documents.mapNotNull { it.toObject(com.example.memoapp.model.Note::class.java)?.apply { id = it.id } }
+                _availableNotes.value = list
+            }
+    }
+
+    private fun fetchAvailableConcepts(userId: String) {
+        conceptsListener?.remove()
+        conceptsListener = db.collection("concepts")
+            .whereEqualTo("user_id", userId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null || snapshots == null) return@addSnapshotListener
+                val list = snapshots.documents.mapNotNull { it.toObject(Concept::class.java)?.apply { id = it.id } }
+                    .filter { it.id != conceptId } // Don't link to self
+                _availableConcepts.value = list
+            }
+    }
+
+    private fun fetchAvailableLogItems() {
+        viewModelScope.launch {
+            val repo = com.example.memoapp.LogItemRepository(getApplication())
+            _availableLogItems.value = repo.getAll()
+        }
+    }
+
+    fun setInsertionPoint(x: Float, y: Float) {
+        _insertionPoint.value = Offset(x, y)
+    }
+
+    fun addLinkedElement(itemType: String, itemId: String, title: String) {
+        val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
+
+        val x = _insertionPoint.value.x
+        val y = _insertionPoint.value.y
+
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+        val newElement = CanvasElement(
+            id = db.collection("canvas_elements").document().id,
+            userId = userId,
+            conceptId = conceptId,
+            type = "RECTANGLE", // Represent as a rectangle
+            x = snapToGrid(x),
+            y = snapToGrid(y),
+            width = 250f,
+            height = 80f,
+            text = title,
+            color = android.graphics.Color.WHITE,
+            strokeColor = when(itemType) {
+                "NOTE" -> android.graphics.Color.BLUE
+                "LOG_ITEM" -> android.graphics.Color.GREEN
+                "CONCEPT" -> android.graphics.Color.RED
+                else -> android.graphics.Color.BLACK
+            },
+            drawStyle = 0, // Fill + Stroke
+            linkedItemId = itemId,
+            linkedItemType = itemType,
+            zIndex = maxZ + 1
+        )
+        elements.add(newElement)
+        selectElement(newElement)
+        setActiveModal(ConceptModalType.NONE)
     }
 
     fun insertSymbolText(content: String) {
@@ -522,5 +608,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         super.onCleared()
         elementsListener?.remove()
         symbolsListener?.remove()
+        notesListener?.remove()
+        conceptsListener?.remove()
     }
 }

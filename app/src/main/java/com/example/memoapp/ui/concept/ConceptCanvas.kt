@@ -349,6 +349,24 @@ fun ConceptCanvas(
                     drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx - 5f / safeScale, cy))
                     drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx + 5f / safeScale, cy))
                 }
+
+                // リンクされたアイテムのインジケーター（書類アイコン）
+                if (element.linkedItemId != null) {
+                    val linkIconSize = 24f / safeScale
+                    val lx = renderX + 4f / safeScale
+                    val ly = renderY + 4f / safeScale
+                    
+                    // アイコン背景
+                    drawRect(
+                        color = Color.White.copy(alpha = 0.8f),
+                        topLeft = Offset(lx, ly),
+                        size = Size(linkIconSize, linkIconSize)
+                    )
+                    // シンプルな書類アイコン風の線
+                    drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 6f/safeScale), Offset(lx + 20f/safeScale, ly + 6f/safeScale), 2f/safeScale)
+                    drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 12f/safeScale), Offset(lx + 20f/safeScale, ly + 12f/safeScale), 2f/safeScale)
+                    drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 18f/safeScale), Offset(lx + 12f/safeScale, ly + 18f/safeScale), 2f/safeScale)
+                }
                 
                 if (element == selectedElement) {
                     val safeScale = if (scale > 0.001f) scale else 1f

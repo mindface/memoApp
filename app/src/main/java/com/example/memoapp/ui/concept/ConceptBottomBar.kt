@@ -26,6 +26,7 @@ fun ConceptBottomBar(
     onPaste: () -> Unit,
     onShowCloudSettings: () -> Unit,
     onShowStyleSettings: () -> Unit,
+    onOpenLinkedItem: (CanvasElement) -> Unit,
     onSendToBack: () -> Unit,
     onBringToFront: () -> Unit,
     onEditSelected: () -> Unit,
@@ -84,6 +85,15 @@ fun ConceptBottomBar(
                         contentDescription = "Appearance Settings",
                         onClick = onShowStyleSettings
                     )
+
+                    // Open Linked Item (Link Icon)
+                    if (selectedElement.linkedItemId != null) {
+                        ToolbarButton(
+                            iconRes = android.R.drawable.ic_menu_directions,
+                            contentDescription = "Open Item",
+                            onClick = { onOpenLinkedItem(selectedElement) }
+                        )
+                    }
                 }
                 
                 if (canPaste) {
