@@ -117,11 +117,35 @@
         app:iconSize="32dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@+id/button_logout"
+        app:layout_constraintEnd_toStartOf="@+id/button_to_reformation"
         app:layout_constraintHorizontal_chainStyle="packed"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/button_to_notes"
         app:layout_constraintVertical_bias="0" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_to_reformation"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="8dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="reFormation"
+        android:textAllCaps="false"
+        android:textSize="12sp"
+        app:cornerRadius="16dp"
+        app:icon="@android:drawable/ic_menu_sort_by_size"
+        app:iconGravity="top"
+        app:iconPadding="4dp"
+        app:iconSize="32dp"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintEnd_toStartOf="@+id/button_logout"
+        app:layout_constraintStart_toEndOf="@+id/button_to_symbols"
+        app:layout_constraintTop_toTopOf="@+id/button_to_symbols"
+        app:layout_constraintBottom_toBottomOf="@+id/button_to_symbols" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_logout"
@@ -147,7 +171,7 @@
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/button_to_symbols"
+        app:layout_constraintStart_toEndOf="@+id/button_to_reformation"
         app:layout_constraintTop_toTopOf="@+id/button_to_symbols"
         app:layout_constraintBottom_toBottomOf="@+id/button_to_symbols" />
 

@@ -27,12 +27,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW }
+enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED }
+enum class ConceptModalType { NONE, CLOUD, STYLE, ITEM_PICKER, ITEM_DETAIL }
 
 class ConceptViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val conceptId: String = savedStateHandle["conceptId"] ?: ""
+    private val conceptId: String = savedStateHandle["conceptId"] ?: savedStateHandle["reformationId"] ?: ""
 
     val elements = mutableStateListOf<CanvasElement>()
     private var elementsListener: ListenerRegistration? = null
@@ -42,6 +43,16 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     private val _selectedColor = MutableStateFlow(android.graphics.Color.BLUE)
     val selectedColor: StateFlow<Int> = _selectedColor.asStateFlow()
+
+    val quickColors = listOf(
+        android.graphics.Color.parseColor("#F44336"), // Red
+        android.graphics.Color.parseColor("#2196F3"), // Blue
+        android.graphics.Color.parseColor("#4CAF50"), // Green
+        android.graphics.Color.parseColor("#FFEB3B"), // Yellow
+        android.graphics.Color.parseColor("#FF9800"), // Orange
+        android.graphics.Color.parseColor("#000000"), // Black
+        android.graphics.Color.parseColor("#FFFFFF")  // White
+    )
 
     private val _selectedElement = MutableStateFlow<CanvasElement?>(null)
     val selectedElement: StateFlow<CanvasElement?> = _selectedElement.asStateFlow()
@@ -63,31 +74,73 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _viewScale = MutableStateFlow(1f)
     val viewScale: StateFlow<Float> = _viewScale.asStateFlow()
 
+    private val _insertionPoint = MutableStateFlow(Offset.Zero)
+    val insertionPoint: StateFlow<Offset> = _insertionPoint.asStateFlow()
+
     private val _isGridEnabled = MutableStateFlow(true)
     val isGridEnabled: StateFlow<Boolean> = _isGridEnabled.asStateFlow()
 
     private val _isLocalOnly = MutableStateFlow(false)
     val isLocalOnly: StateFlow<Boolean> = _isLocalOnly.asStateFlow()
 
-    private val _showDetailModal = MutableStateFlow(false)
-    val showDetailModal: StateFlow<Boolean> = _showDetailModal.asStateFlow()
+    private val _colorTarget = MutableStateFlow("BODY") // BODY or STROKE
+    val colorTarget: StateFlow<String> = _colorTarget.asStateFlow()
+
+    private val _activeModal = MutableStateFlow(ConceptModalType.NONE)
+    val activeModal: StateFlow<ConceptModalType> = _activeModal.asStateFlow()
 
     private val _availableSymbols = MutableStateFlow<List<Symbol>>(emptyList())
     val availableSymbols: StateFlow<List<Symbol>> = _availableSymbols.asStateFlow()
 
+    private val _availableNotes = MutableStateFlow<List<com.example.memoapp.model.Note>>(emptyList())
+    val availableNotes: StateFlow<List<com.example.memoapp.model.Note>> = _availableNotes.asStateFlow()
+
+    private val _availableLogItems = MutableStateFlow<List<com.example.memoapp.model.LogItem>>(emptyList())
+    val availableLogItems: StateFlow<List<com.example.memoapp.model.LogItem>> = _availableLogItems.asStateFlow()
+
+    private val _availableConcepts = MutableStateFlow<List<Concept>>(emptyList())
+    val availableConcepts: StateFlow<List<Concept>> = _availableConcepts.asStateFlow()
+
+    private val _selectedItemDetail = MutableStateFlow<Pair<String, String>?>(null)
+    val selectedItemDetail: StateFlow<Pair<String, String>?> = _selectedItemDetail.asStateFlow()
+
     private var conceptMetadata: Concept? = null
     private var symbolsListener: ListenerRegistration? = null
+    private var notesListener: ListenerRegistration? = null
+    private var conceptsListener: ListenerRegistration? = null
 
     init {
         val currentUser = auth.currentUser
         if (currentUser != null) {
             fetchCanvasElements()
             fetchAvailableSymbols(currentUser.uid)
+            fetchAvailableNotes(currentUser.uid)
+            fetchAvailableConcepts(currentUser.uid)
+            fetchAvailableLogItems()
         }
     }
 
-    fun setShowDetailModal(show: Boolean) {
-        _showDetailModal.value = show
+    fun setActiveModal(type: ConceptModalType) {
+        _activeModal.value = type
+    }
+
+    fun loadItemDetail(element: CanvasElement) {
+        val itemId = element.linkedItemId ?: return
+        val itemType = element.linkedItemType ?: return
+
+        val detail = when (itemType) {
+            "NOTE" -> availableNotes.value.find { it.id == itemId }?.let { it.title to it.content }
+            "LOG_ITEM" -> availableLogItems.value.find { it.id == itemId }?.let { it.title to it.content }
+            "CONCEPT" -> availableConcepts.value.find { it.id == itemId }?.let { it.title to "Concept Canvas (Use 'Open Item' to view details)" }
+            else -> null
+        }
+
+        if (detail != null) {
+            _selectedItemDetail.value = detail
+            setActiveModal(ConceptModalType.ITEM_DETAIL)
+        } else {
+            viewModelScope.launch { _exportResult.emit("アイテムの読み込みに失敗しました") }
+        }
     }
 
     private fun fetchAvailableSymbols(userId: String) {
@@ -99,6 +152,77 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
                 val list = snapshots.toObjects(Symbol::class.java)
                 _availableSymbols.value = list.sortedByDescending { it.updated_at }
             }
+    }
+
+    private fun fetchAvailableNotes(userId: String) {
+        notesListener?.remove()
+        notesListener = db.collection("notes")
+            .whereEqualTo("user_id", userId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null || snapshots == null) return@addSnapshotListener
+                val list = snapshots.documents.mapNotNull { it.toObject(com.example.memoapp.model.Note::class.java)?.apply { id = it.id } }
+                _availableNotes.value = list
+            }
+    }
+
+    private fun fetchAvailableConcepts(userId: String) {
+        conceptsListener?.remove()
+        conceptsListener = db.collection("concepts")
+            .whereEqualTo("user_id", userId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null || snapshots == null) return@addSnapshotListener
+                val list = snapshots.documents.mapNotNull { it.toObject(Concept::class.java)?.apply { id = it.id } }
+                    .filter { it.id != conceptId } // Don't link to self
+                _availableConcepts.value = list
+            }
+    }
+
+    private fun fetchAvailableLogItems() {
+        viewModelScope.launch {
+            val repo = com.example.memoapp.LogItemRepository(getApplication())
+            _availableLogItems.value = repo.getAll()
+        }
+    }
+
+    fun setInsertionPoint(x: Float, y: Float) {
+        _insertionPoint.value = Offset(x, y)
+    }
+
+    fun addLinkedElement(itemType: String, itemId: String, title: String) {
+        val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
+
+        val x = _insertionPoint.value.x
+        val y = _insertionPoint.value.y
+
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+        val newElement = CanvasElement(
+            id = db.collection("canvas_elements").document().id,
+            userId = userId,
+            conceptId = conceptId,
+            type = "RECTANGLE", // Represent as a rectangle
+            x = snapToGrid(x),
+            y = snapToGrid(y),
+            width = 250f,
+            height = 80f,
+            fontSize = 22f,
+            text = title,
+            color = android.graphics.Color.WHITE,
+            strokeColor = when(itemType) {
+                "NOTE" -> android.graphics.Color.BLUE
+                "LOG_ITEM" -> android.graphics.Color.GREEN
+                "CONCEPT" -> android.graphics.Color.RED
+                else -> android.graphics.Color.BLACK
+            },
+            drawStyle = 0, // Fill + Stroke
+            linkedItemId = itemId,
+            linkedItemType = itemType,
+            zIndex = maxZ + 1
+        )
+        elements.add(newElement)
+        selectElement(newElement)
+        setActiveModal(ConceptModalType.NONE)
+        _currentMode.value = ConceptMode.PAN_ZOOM
     }
 
     fun insertSymbolText(content: String) {
@@ -127,12 +251,20 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         _currentMode.value = mode
     }
 
+    fun setColorTarget(target: String) {
+        _colorTarget.value = target
+    }
+
     fun setSelectedColor(color: Int) {
-        _selectedColor.value = color
-        _selectedElement.value?.let { element ->
-            val updated = element.copy(color = color)
-            _selectedElement.value = updated
-            updateElement(updated)
+        if (_colorTarget.value == "STROKE") {
+            updateElementStrokeColor(color)
+        } else {
+            _selectedColor.value = color
+            _selectedElement.value?.let { element ->
+                val updated = element.copy(color = color)
+                _selectedElement.value = updated
+                updateElement(updated)
+            }
         }
     }
 
@@ -157,6 +289,41 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         }
     }
 
+    fun cycleElementStyle() {
+        _selectedElement.value?.let { element ->
+            if (element.type == "RECTANGLE" || element.type == "CIRCLE") {
+                val nextStyle = (element.drawStyle + 1) % 3
+                val updated = element.copy(drawStyle = nextStyle)
+                updateElement(updated)
+            }
+        }
+    }
+
+    fun updateElementStrokeColor(color: Int) {
+        _selectedElement.value?.let { element ->
+            val updated = element.copy(strokeColor = color)
+            updateElement(updated)
+        }
+    }
+
+    fun updateElementBodyColor(color: Int) {
+        _selectedColor.value = color
+        _selectedElement.value?.let { element ->
+            val updated = element.copy(color = color)
+            _selectedElement.value = updated
+            updateElement(updated)
+        }
+    }
+
+    fun setElementDrawStyle(style: Int) {
+        _selectedElement.value?.let { element ->
+            if (element.type == "RECTANGLE" || element.type == "CIRCLE") {
+                val updated = element.copy(drawStyle = style)
+                updateElement(updated)
+            }
+        }
+    }
+
     fun addElement(type: String, x: Float, y: Float, text: String = "") {
         val userId = auth.currentUser?.uid ?: return
         if (conceptId.isEmpty()) return
@@ -175,7 +342,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             width = if (type == "TEXT") 1f else if (type == "ARROW") 160f else 150f,
             height = if (type == "TEXT") 1f else if (type == "ARROW") 40f else 150f,
             text = text,
-            color = if (type == "TEXT") android.graphics.Color.BLACK else _selectedColor.value,
+            color = _selectedColor.value,
             zIndex = maxZ + 1
         )
         elements.add(newElement)
@@ -259,13 +426,13 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     fun changeFontSize(delta: Float) {
         _selectedElement.value?.let { element ->
-            if (element.type == "TEXT") {
+            if (element.type == "TEXT" || element.linkedItemId != null) {
                 val newSize = (element.fontSize + delta).coerceAtLeast(10f)
                 val ratio = newSize / element.fontSize
                 val updated = element.copy(
                     fontSize = newSize,
-                    width = element.width * ratio,
-                    height = newSize + 10f
+                    width = (element.width * ratio).coerceAtLeast(100f),
+                    height = if (element.type == "TEXT") newSize + 10f else (element.height * ratio).coerceAtLeast(40f)
                 )
                 updateElement(updated)
             }
@@ -465,5 +632,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         super.onCleared()
         elementsListener?.remove()
         symbolsListener?.remove()
+        notesListener?.remove()
+        conceptsListener?.remove()
     }
 }

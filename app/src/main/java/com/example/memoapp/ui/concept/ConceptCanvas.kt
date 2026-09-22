@@ -272,22 +272,75 @@ fun ConceptCanvas(
 
                 withTransform({ rotate(renderRotation, renderCenter) }) {
                     when (element.type) {
-                        "RECTANGLE" -> drawRect(
-                            color = color,
-                            topLeft = Offset(renderX, renderY),
-                            size = Size(renderW, renderH)
-                        )
-                        "CIRCLE" -> drawCircle(
-                            color = color,
-                            radius = renderW / 2,
-                            center = renderCenter
-                        )
+                        "RECTANGLE" -> {
+                            // Fill
+                            if (element.drawStyle == 0 || element.drawStyle == 1) {
+                                drawRect(
+                                    color = color,
+                                    topLeft = Offset(renderX, renderY),
+                                    size = Size(renderW, renderH)
+                                )
+                            }
+                            // Outline
+                            if (element.drawStyle == 0 || element.drawStyle == 2) {
+                                drawRect(
+                                    color = Color(element.strokeColor),
+                                    topLeft = Offset(renderX, renderY),
+                                    size = Size(renderW, renderH),
+                                    style = Stroke(width = 2f / safeScale)
+                                )
+                            }
+                            // Text inside RECTANGLE (e.g. linked article title)
+                            if (element.text.isNotEmpty()) {
+                                val iconOffset = if (element.linkedItemId != null) 32f / safeScale else 8f / safeScale
+                                val maxW = (renderW - iconOffset - (8f / safeScale)).coerceAtLeast(10f).toInt()
+                                val layout = textMeasurer.measure(
+                                    text = element.text,
+                                    style = androidx.compose.ui.text.TextStyle(
+                                        color = Color.Black,
+                                        fontSize = (element.fontSize / safeScale).sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    ),
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = maxW)
+                                )
+                                drawText(
+                                    textLayoutResult = layout,
+                                    topLeft = Offset(
+                                        renderX + iconOffset,
+                                        renderY + (renderH - layout.size.height) / 2f
+                                    )
+                                )
+                            }
+                        }
+                        "CIRCLE" -> {
+                            // Fill
+                            if (element.drawStyle == 0 || element.drawStyle == 1) {
+                                drawCircle(
+                                    color = color,
+                                    radius = renderW / 2,
+                                    center = renderCenter
+                                )
+                            }
+                            // Outline
+                            if (element.drawStyle == 0 || element.drawStyle == 2) {
+                                drawCircle(
+                                    color = Color(element.strokeColor),
+                                    radius = renderW / 2,
+                                    center = renderCenter,
+                                    style = Stroke(width = 2f / safeScale)
+                                )
+                            }
+                        }
                         "ARROW" -> drawArrow(
                             x1 = renderX,
                             y1 = renderY + renderH / 2,
                             x2 = renderX + renderW,
                             y2 = renderY + renderH / 2,
-                            color = color
+                            color = color,
+                            strokeColor = Color(element.strokeColor),
+                            drawStyle = element.drawStyle
                         )
                         "TEXT" -> {
                             val layout = textMeasurer.measure(
@@ -318,6 +371,24 @@ fun ConceptCanvas(
                     // シンプルな雲の形（3つの丸）を擬似的に描画
                     drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx - 5f / safeScale, cy))
                     drawCircle(Color.LightGray, cloudIconSize / 3, Offset(cx + 5f / safeScale, cy))
+                }
+
+                // リンクされたアイテムのインジケーター（書類アイコン）
+                if (element.linkedItemId != null) {
+                    val linkIconSize = 24f / safeScale
+                    val lx = renderX + 4f / safeScale
+                    val ly = renderY + 4f / safeScale
+                    
+                    // アイコン背景
+                    drawRect(
+                        color = Color.White.copy(alpha = 0.8f),
+                        topLeft = Offset(lx, ly),
+                        size = Size(linkIconSize, linkIconSize)
+                    )
+                    // シンプルな書類アイコン風の線
+                    drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 6f/safeScale), Offset(lx + 20f/safeScale, ly + 6f/safeScale), 2f/safeScale)
+                    drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 12f/safeScale), Offset(lx + 20f/safeScale, ly + 12f/safeScale), 2f/safeScale)
+                    drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 18f/safeScale), Offset(lx + 12f/safeScale, ly + 18f/safeScale), 2f/safeScale)
                 }
                 
                 if (element == selectedElement) {
@@ -363,41 +434,32 @@ private fun DrawScope.drawGrid(offset: Offset, scale: Float) {
     }
 }
 
-private fun DrawScope.drawArrow(x1: Float, y1: Float, x2: Float, y2: Float, color: Color) {
-    val headSize = 40f // Enlarged from 30f
+private fun DrawScope.drawArrow(x1: Float, y1: Float, x2: Float, y2: Float, color: Color, strokeColor: Color, drawStyle: Int) {
+    val headSize = 40f
     val angle = atan2(y2 - y1, x2 - x1)
     
-    // Main shaft
-    drawLine(color, Offset(x1, y1), Offset(x2, y2), 10f)
+    // Main shaft uses stroke color
+    if (drawStyle == 0 || drawStyle == 2) {
+        drawLine(strokeColor, Offset(x1, y1), Offset(x2, y2), 10f)
+    }
     
-    // Sharp arrowhead path
     val path = Path().apply {
         moveTo(x2, y2)
-        lineTo(
-            x2 - headSize * cos(angle - 0.4f), 
-            y2 - headSize * sin(angle - 0.4f)
-        )
-        // Add a slight notch at the back for a "stealth/sharp" look
-        lineTo(
-            x2 - (headSize * 0.7f) * cos(angle), 
-            y2 - (headSize * 0.7f) * sin(angle)
-        )
-        lineTo(
-            x2 - headSize * cos(angle + 0.4f), 
-            y2 - headSize * sin(angle + 0.4f)
-        )
+        lineTo(x2 - headSize * cos(angle - 0.4f), y2 - headSize * sin(angle - 0.4f))
+        lineTo(x2 - (headSize * 0.7f) * cos(angle), y2 - (headSize * 0.7f) * sin(angle))
+        lineTo(x2 - headSize * cos(angle + 0.4f), y2 - headSize * sin(angle + 0.4f))
         close()
     }
     
-    // Fill the arrowhead
-    drawPath(path, color)
+    // Fill
+    if (drawStyle == 0 || drawStyle == 1) {
+        drawPath(path, color)
+    }
     
-    // Add a white outline to the arrowhead to make it pop
-    drawPath(
-        path = path,
-        color = Color.White,
-        style = Stroke(width = 2f)
-    )
+    // Outline
+    if (drawStyle == 0 || drawStyle == 2) {
+        drawPath(path, strokeColor, style = Stroke(width = 2f))
+    }
 }
 
 private fun rotatePoint(point: Offset, center: Offset, angleDegrees: Float): Offset {
