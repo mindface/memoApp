@@ -34,6 +34,7 @@ fun ConceptScreen(
     val availableNotes by viewModel.availableNotes.collectAsStateWithLifecycle()
     val availableLogItems by viewModel.availableLogItems.collectAsStateWithLifecycle()
     val availableConcepts by viewModel.availableConcepts.collectAsStateWithLifecycle()
+    val selectedItemDetail by viewModel.selectedItemDetail.collectAsStateWithLifecycle()
     val quickColors = viewModel.quickColors
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -63,6 +64,7 @@ fun ConceptScreen(
                 onPaste = { viewModel.pasteElement() },
                 onShowCloudSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.CLOUD) },
                 onShowStyleSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.STYLE) },
+                onShowItemDetail = { viewModel.loadItemDetail(it) },
                 onOpenLinkedItem = { el ->
                     el.linkedItemId?.let { id ->
                         el.linkedItemType?.let { type ->
@@ -184,6 +186,26 @@ fun ConceptScreen(
                             },
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
+                    }
+                    com.example.memoapp.ConceptModalType.ITEM_DETAIL -> {
+                        selectedItemDetail?.let { (title, content) ->
+                            ConceptLinkedItemDetailModal(
+                                title = title,
+                                content = content,
+                                onOpenFullEditor = {
+                                    // Navigate to full editor
+                                    selectedElement?.let { el ->
+                                        el.linkedItemId?.let { id ->
+                                            el.linkedItemType?.let { type ->
+                                                onNavigateToItem(type, id)
+                                            }
+                                        }
+                                    }
+                                    viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE)
+                                },
+                                onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
+                            )
+                        }
                     }
                     else -> {}
                 }

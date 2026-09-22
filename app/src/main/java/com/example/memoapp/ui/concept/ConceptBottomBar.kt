@@ -26,6 +26,7 @@ fun ConceptBottomBar(
     onPaste: () -> Unit,
     onShowCloudSettings: () -> Unit,
     onShowStyleSettings: () -> Unit,
+    onShowItemDetail: (CanvasElement) -> Unit,
     onOpenLinkedItem: (CanvasElement) -> Unit,
     onSendToBack: () -> Unit,
     onBringToFront: () -> Unit,
@@ -86,8 +87,14 @@ fun ConceptBottomBar(
                         onClick = onShowStyleSettings
                     )
 
-                    // Open Linked Item (Link Icon)
+                    // Open Linked Item Detail (Eye Icon)
                     if (selectedElement.linkedItemId != null) {
+                        ToolbarButton(
+                            iconRes = android.R.drawable.ic_menu_view,
+                            contentDescription = "Read Details",
+                            onClick = { onShowItemDetail(selectedElement) }
+                        )
+                        
                         ToolbarButton(
                             iconRes = android.R.drawable.ic_menu_directions,
                             contentDescription = "Open Item",
@@ -128,7 +135,7 @@ fun ConceptBottomBar(
 
                     VerticalDivider(modifier = Modifier.height(32.dp))
 
-                    if (selectedElement.type == "TEXT") {
+                    if (selectedElement.type == "TEXT" || selectedElement.linkedItemId != null) {
                         ToolbarButton(
                             iconRes = android.R.drawable.ic_menu_edit,
                             contentDescription = "Edit Text",

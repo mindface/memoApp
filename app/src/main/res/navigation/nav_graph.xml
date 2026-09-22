@@ -33,6 +33,9 @@
             android:id="@+id/action_HomeFragment_to_SymbolListFragment"
             app:destination="@id/SymbolListFragment" />
         <action
+            android:id="@+id/action_HomeFragment_to_ReFormationListFragment"
+            app:destination="@id/ReFormationListFragment" />
+        <action
             android:id="@+id/action_HomeFragment_to_LoginFragment"
             app:destination="@id/LoginFragment"
             app:popUpTo="@id/nav_graph"
@@ -96,5 +99,29 @@
         android:name="com.example.memoapp.SymbolListFragment"
         android:label="Symbols"
         tools:layout="@layout/fragment_symbol_list" />
+
+    <fragment
+        android:id="@+id/ReFormationListFragment"
+        android:name="com.example.memoapp.ReFormationListFragment"
+        android:label="reFormation Projects">
+        <action
+            android:id="@+id/action_ReFormationListFragment_to_ReFormationDetailFragment"
+            app:destination="@id/ReFormationDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/ReFormationDetailFragment"
+        android:name="com.example.memoapp.ReFormationDetailFragment"
+        android:label="reFormation Project">
+        <argument
+            android:name="reformationId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_ReFormationDetailFragment_to_LogItemFragment"
+            app:destination="@id/LogItemFragment" />
+        <action
+            android:id="@+id/action_ReFormationDetailFragment_to_ConceptFragment"
+            app:destination="@id/ConceptFragment" />
+    </fragment>
 
 </navigation>

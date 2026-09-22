@@ -28,12 +28,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED }
-enum class ConceptModalType { NONE, CLOUD, STYLE, ITEM_PICKER }
+enum class ConceptModalType { NONE, CLOUD, STYLE, ITEM_PICKER, ITEM_DETAIL }
 
 class ConceptViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val conceptId: String = savedStateHandle["conceptId"] ?: ""
+    private val conceptId: String = savedStateHandle["conceptId"] ?: savedStateHandle["reformationId"] ?: ""
 
     val elements = mutableStateListOf<CanvasElement>()
     private var elementsListener: ListenerRegistration? = null
@@ -101,6 +101,9 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _availableConcepts = MutableStateFlow<List<Concept>>(emptyList())
     val availableConcepts: StateFlow<List<Concept>> = _availableConcepts.asStateFlow()
 
+    private val _selectedItemDetail = MutableStateFlow<Pair<String, String>?>(null)
+    val selectedItemDetail: StateFlow<Pair<String, String>?> = _selectedItemDetail.asStateFlow()
+
     private var conceptMetadata: Concept? = null
     private var symbolsListener: ListenerRegistration? = null
     private var notesListener: ListenerRegistration? = null
@@ -119,6 +122,25 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     fun setActiveModal(type: ConceptModalType) {
         _activeModal.value = type
+    }
+
+    fun loadItemDetail(element: CanvasElement) {
+        val itemId = element.linkedItemId ?: return
+        val itemType = element.linkedItemType ?: return
+
+        val detail = when (itemType) {
+            "NOTE" -> availableNotes.value.find { it.id == itemId }?.let { it.title to it.content }
+            "LOG_ITEM" -> availableLogItems.value.find { it.id == itemId }?.let { it.title to it.content }
+            "CONCEPT" -> availableConcepts.value.find { it.id == itemId }?.let { it.title to "Concept Canvas (Use 'Open Item' to view details)" }
+            else -> null
+        }
+
+        if (detail != null) {
+            _selectedItemDetail.value = detail
+            setActiveModal(ConceptModalType.ITEM_DETAIL)
+        } else {
+            viewModelScope.launch { _exportResult.emit("アイテムの読み込みに失敗しました") }
+        }
     }
 
     private fun fetchAvailableSymbols(userId: String) {
@@ -183,6 +205,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             y = snapToGrid(y),
             width = 250f,
             height = 80f,
+            fontSize = 22f,
             text = title,
             color = android.graphics.Color.WHITE,
             strokeColor = when(itemType) {
@@ -199,6 +222,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         elements.add(newElement)
         selectElement(newElement)
         setActiveModal(ConceptModalType.NONE)
+        _currentMode.value = ConceptMode.PAN_ZOOM
     }
 
     fun insertSymbolText(content: String) {
@@ -402,13 +426,13 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     fun changeFontSize(delta: Float) {
         _selectedElement.value?.let { element ->
-            if (element.type == "TEXT") {
+            if (element.type == "TEXT" || element.linkedItemId != null) {
                 val newSize = (element.fontSize + delta).coerceAtLeast(10f)
                 val ratio = newSize / element.fontSize
                 val updated = element.copy(
                     fontSize = newSize,
-                    width = element.width * ratio,
-                    height = newSize + 10f
+                    width = (element.width * ratio).coerceAtLeast(100f),
+                    height = if (element.type == "TEXT") newSize + 10f else (element.height * ratio).coerceAtLeast(40f)
                 )
                 updateElement(updated)
             }

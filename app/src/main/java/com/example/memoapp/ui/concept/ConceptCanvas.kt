@@ -290,6 +290,29 @@ fun ConceptCanvas(
                                     style = Stroke(width = 2f / safeScale)
                                 )
                             }
+                            // Text inside RECTANGLE (e.g. linked article title)
+                            if (element.text.isNotEmpty()) {
+                                val iconOffset = if (element.linkedItemId != null) 32f / safeScale else 8f / safeScale
+                                val maxW = (renderW - iconOffset - (8f / safeScale)).coerceAtLeast(10f).toInt()
+                                val layout = textMeasurer.measure(
+                                    text = element.text,
+                                    style = androidx.compose.ui.text.TextStyle(
+                                        color = Color.Black,
+                                        fontSize = (element.fontSize / safeScale).sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    ),
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = maxW)
+                                )
+                                drawText(
+                                    textLayoutResult = layout,
+                                    topLeft = Offset(
+                                        renderX + iconOffset,
+                                        renderY + (renderH - layout.size.height) / 2f
+                                    )
+                                )
+                            }
                         }
                         "CIRCLE" -> {
                             // Fill

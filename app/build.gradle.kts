@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+fun kotlinOptions(function: () -> Unit) {}
+
 android {
     namespace = "com.example.memoapp"
     compileSdk {
@@ -38,6 +40,9 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+    }
+    kotlinOptions {
+        var jvmTarget = "11"
     }
 }
 
