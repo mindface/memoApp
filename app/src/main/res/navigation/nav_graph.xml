@@ -103,7 +103,7 @@
     <fragment
         android:id="@+id/ReFormationListFragment"
         android:name="com.example.memoapp.ReFormationListFragment"
-        android:label="reFormation Projects">
+        android:label="reFormation List">
         <action
             android:id="@+id/action_ReFormationListFragment_to_ReFormationDetailFragment"
             app:destination="@id/ReFormationDetailFragment" />
@@ -112,7 +112,7 @@
     <fragment
         android:id="@+id/ReFormationDetailFragment"
         android:name="com.example.memoapp.ReFormationDetailFragment"
-        android:label="reFormation Project">
+        android:label="reFormation Detail">
         <argument
             android:name="reformationId"
             app:argType="string" />

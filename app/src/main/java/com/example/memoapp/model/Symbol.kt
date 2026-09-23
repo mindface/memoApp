@@ -11,5 +11,6 @@ data class Symbol(
     var updated_at: String = "",
     var symbolType: String = "",
     var extension: String = "",
-    var language: String = ""
+    var language: String = "",
+    var tags: List<String> = emptyList()
 ) : Serializable
