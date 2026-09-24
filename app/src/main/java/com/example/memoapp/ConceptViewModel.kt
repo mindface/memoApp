@@ -34,6 +34,8 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val conceptId: String = savedStateHandle["conceptId"] ?: savedStateHandle["reformationId"] ?: ""
+    val isReFormation: Boolean = savedStateHandle.contains("reformationId")
+            && !savedStateHandle.get<String>("reformationId").isNullOrEmpty()
 
     val elements = mutableStateListOf<CanvasElement>()
     private var elementsListener: ListenerRegistration? = null
@@ -127,19 +129,24 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     fun loadItemDetail(element: CanvasElement) {
         val itemId = element.linkedItemId ?: return
         val itemType = element.linkedItemType ?: return
+        selectElement(element)
 
-        val detail = when (itemType) {
-            "NOTE" -> availableNotes.value.find { it.id == itemId }?.let { it.title to it.content }
-            "LOG_ITEM" -> availableLogItems.value.find { it.id == itemId }?.let { it.title to it.content }
-            "CONCEPT" -> availableConcepts.value.find { it.id == itemId }?.let { it.title to "Concept Canvas (Use 'Open Item' to view details)" }
-            else -> null
-        }
-
-        if (detail != null) {
-            _selectedItemDetail.value = detail
-            setActiveModal(ConceptModalType.ITEM_DETAIL)
-        } else {
-            viewModelScope.launch { _exportResult.emit("アイテムの読み込みに失敗しました") }
+        when (itemType) {
+            "NOTE" -> {
+                val note = _availableNotes.value.find { it.id == itemId }
+                _selectedItemDetail.value = (note?.title ?: element.text) to (note?.content ?: "")
+                setActiveModal(ConceptModalType.ITEM_DETAIL)
+            }
+            "LOG_ITEM" -> {
+                val item = _availableLogItems.value.find { it.id == itemId }
+                _selectedItemDetail.value = (item?.title ?: element.text) to (item?.content ?: "")
+                setActiveModal(ConceptModalType.ITEM_DETAIL)
+            }
+            "CONCEPT" -> {
+                val concept = _availableConcepts.value.find { it.id == itemId }
+                _selectedItemDetail.value = (concept?.title ?: element.text) to "Concept ID: ${concept?.id ?: itemId}"
+                setActiveModal(ConceptModalType.ITEM_DETAIL)
+            }
         }
     }
 
@@ -205,7 +212,6 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             y = snapToGrid(y),
             width = 250f,
             height = 80f,
-            fontSize = 22f,
             text = title,
             color = android.graphics.Color.WHITE,
             strokeColor = when(itemType) {
@@ -426,13 +432,13 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     fun changeFontSize(delta: Float) {
         _selectedElement.value?.let { element ->
-            if (element.type == "TEXT" || element.linkedItemId != null) {
+            if (element.type == "TEXT") {
                 val newSize = (element.fontSize + delta).coerceAtLeast(10f)
                 val ratio = newSize / element.fontSize
                 val updated = element.copy(
                     fontSize = newSize,
-                    width = (element.width * ratio).coerceAtLeast(100f),
-                    height = if (element.type == "TEXT") newSize + 10f else (element.height * ratio).coerceAtLeast(40f)
+                    width = element.width * ratio,
+                    height = newSize + 10f
                 )
                 updateElement(updated)
             }

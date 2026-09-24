@@ -16,6 +16,7 @@ import com.example.memoapp.ConceptMode
 fun ConceptToolbar(
     currentMode: ConceptMode,
     isGridEnabled: Boolean,
+    isReFormation: Boolean = false,
     onModeChange: (ConceptMode) -> Unit,
     onToggleGrid: () -> Unit,
     onSaveLocal: () -> Unit,
@@ -63,12 +64,14 @@ fun ConceptToolbar(
                 isSelected = currentMode == ConceptMode.ADD_TEXT,
                 onClick = { onModeChange(ConceptMode.ADD_TEXT) }
             )
-            ToolbarButton(
-                iconRes = android.R.drawable.ic_menu_agenda,
-                contentDescription = "Add Linked Item",
-                isSelected = currentMode == ConceptMode.ADD_LINKED,
-                onClick = { onModeChange(ConceptMode.ADD_LINKED) }
-            )
+            if (isReFormation) {
+                ToolbarButton(
+                    iconRes = android.R.drawable.ic_menu_agenda,
+                    contentDescription = "Add Linked Item",
+                    isSelected = currentMode == ConceptMode.ADD_LINKED,
+                    onClick = { onModeChange(ConceptMode.ADD_LINKED) }
+                )
+            }
             
             Spacer(modifier = Modifier.width(8.dp))
             Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
