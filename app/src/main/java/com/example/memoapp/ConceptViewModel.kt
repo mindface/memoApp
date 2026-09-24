@@ -34,6 +34,8 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val conceptId: String = savedStateHandle["conceptId"] ?: savedStateHandle["reformationId"] ?: ""
+    val isReFormation: Boolean = savedStateHandle.contains("reformationId")
+            && !savedStateHandle.get<String>("reformationId").isNullOrEmpty()
 
     val elements = mutableStateListOf<CanvasElement>()
     private var elementsListener: ListenerRegistration? = null

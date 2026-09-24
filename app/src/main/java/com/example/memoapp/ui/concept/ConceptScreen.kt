@@ -37,6 +37,7 @@ fun ConceptScreen(
     val selectedItemDetail by viewModel.selectedItemDetail.collectAsStateWithLifecycle()
     val quickColors = viewModel.quickColors
     val context = androidx.compose.ui.platform.LocalContext.current
+    val isReFormation = viewModel.isReFormation
 
     // 保存・エクスポート結果のトースト表示
     LaunchedEffect(Unit) {
@@ -114,6 +115,7 @@ fun ConceptScreen(
             ConceptToolbar(
                 currentMode = mode,
                 isGridEnabled = isGridEnabled,
+                isReFormation = isReFormation,
                 onModeChange = { viewModel.setMode(it) },
                 onToggleGrid = { viewModel.toggleGrid() },
                 onSaveLocal = { viewModel.saveLocalOnly(context) },
