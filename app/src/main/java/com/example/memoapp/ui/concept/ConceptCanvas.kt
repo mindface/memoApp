@@ -227,7 +227,13 @@ fun ConceptCanvas(
                     }
                     
                     if (!everMultiTouch && !isResizing && !isRotating && totalDrag.getDistance() < 10f) {
-                        if (bodyHit == null && !resizeHandleHit && !rotationHandleHit) {
+                        if (resizeHandleHit || rotationHandleHit) {
+                            // Handle hits already processed
+                        } else if (bodyHit != null) {
+                            // If clicked on an element, make sure it is selected
+                            currentOnSelectElement(bodyHit)
+                        } else {
+                            // Clicked on empty space
                             currentOnSelectElement(null)
                             currentOnCanvasClick(cx, cy)
                         }
@@ -292,13 +298,13 @@ fun ConceptCanvas(
                             }
                             // Text inside RECTANGLE (e.g. linked article title)
                             if (element.text.isNotEmpty()) {
-                                val iconOffset = if (element.linkedItemId != null) 32f / safeScale else 8f / safeScale
-                                val maxW = (renderW - iconOffset - (8f / safeScale)).coerceAtLeast(10f).toInt()
+                                val iconOffset = if (element.linkedItemId != null) 36f else 8f
+                                val maxW = (renderW - iconOffset - 8f).coerceAtLeast(10f).toInt()
                                 val layout = textMeasurer.measure(
                                     text = element.text,
                                     style = androidx.compose.ui.text.TextStyle(
                                         color = Color.Black,
-                                        fontSize = (element.fontSize / safeScale).sp,
+                                        fontSize = element.fontSize.sp,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                     ),
                                     maxLines = 2,

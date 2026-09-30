@@ -144,7 +144,7 @@ fun ConceptBottomBar(
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Button(
-                                onClick = { onChangeFontSize(10f) },
+                                onClick = { onChangeFontSize(2f) },
                                 contentPadding = PaddingValues(horizontal = 8.dp),
                                 modifier = Modifier.height(32.dp)
                             ) {
@@ -152,7 +152,7 @@ fun ConceptBottomBar(
                             }
                             Spacer(Modifier.width(4.dp))
                             Button(
-                                onClick = { onChangeFontSize(-10f) },
+                                onClick = { onChangeFontSize(-2f) },
                                 contentPadding = PaddingValues(horizontal = 8.dp),
                                 modifier = Modifier.height(32.dp)
                             ) {

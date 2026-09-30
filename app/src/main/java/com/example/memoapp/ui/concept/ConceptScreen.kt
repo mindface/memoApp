@@ -37,6 +37,7 @@ fun ConceptScreen(
     val selectedItemDetail by viewModel.selectedItemDetail.collectAsStateWithLifecycle()
     val quickColors = viewModel.quickColors
     val context = androidx.compose.ui.platform.LocalContext.current
+    val isReFormation = viewModel.isReFormation
 
     // 保存・エクスポート結果のトースト表示
     LaunchedEffect(Unit) {
@@ -114,6 +115,7 @@ fun ConceptScreen(
             ConceptToolbar(
                 currentMode = mode,
                 isGridEnabled = isGridEnabled,
+                isReFormation = isReFormation,
                 onModeChange = { viewModel.setMode(it) },
                 onToggleGrid = { viewModel.toggleGrid() },
                 onSaveLocal = { viewModel.saveLocalOnly(context) },
@@ -132,16 +134,18 @@ fun ConceptScreen(
                 color = Color.White
             )
 
-            if (selectedElement != null) {
-                when (activeModal) {
-                    com.example.memoapp.ConceptModalType.CLOUD -> {
+            when (activeModal) {
+                com.example.memoapp.ConceptModalType.CLOUD -> {
+                    if (selectedElement != null) {
                         ConceptCloudModal(
                             selectedElement = selectedElement!!,
                             onToggleShare = { viewModel.toggleElementSharing() },
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
                     }
-                    com.example.memoapp.ConceptModalType.STYLE -> {
+                }
+                com.example.memoapp.ConceptModalType.STYLE -> {
+                    if (selectedElement != null) {
                         ConceptStyleModal(
                             selectedElement = selectedElement!!,
                             availableSymbols = availableSymbols,
@@ -176,18 +180,20 @@ fun ConceptScreen(
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
                     }
-                    com.example.memoapp.ConceptModalType.ITEM_PICKER -> {
-                        ConceptItemPickerModal(
-                            availableNotes = availableNotes,
-                            availableLogItems = availableLogItems,
-                            availableConcepts = availableConcepts,
-                            onItemSelected = { type, id, title ->
-                                viewModel.addLinkedElement(type, id, title)
-                            },
-                            onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
-                        )
-                    }
-                    com.example.memoapp.ConceptModalType.ITEM_DETAIL -> {
+                }
+                com.example.memoapp.ConceptModalType.ITEM_PICKER -> {
+                    ConceptItemPickerModal(
+                        availableNotes = availableNotes,
+                        availableLogItems = availableLogItems,
+                        availableConcepts = availableConcepts,
+                        onItemSelected = { type, id, title ->
+                            viewModel.addLinkedElement(type, id, title)
+                        },
+                        onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
+                    )
+                }
+                com.example.memoapp.ConceptModalType.ITEM_DETAIL -> {
+                    if (selectedElement != null) {
                         selectedItemDetail?.let { (title, content) ->
                             ConceptLinkedItemDetailModal(
                                 title = title,
@@ -207,8 +213,8 @@ fun ConceptScreen(
                             )
                         }
                     }
-                    else -> {}
                 }
+                else -> {}
             }
         }
     }

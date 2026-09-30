@@ -337,7 +337,8 @@ class NoteListFragment : Fragment() {
             filtered = filtered.filter { 
                 it.title.lowercase().contains(q) || 
                 it.language.lowercase().contains(q) ||
-                it.content.lowercase().contains(q)
+                it.content.lowercase().contains(q) ||
+                it.tags.any { tag -> tag.lowercase().contains(q) }
             }
         }
 

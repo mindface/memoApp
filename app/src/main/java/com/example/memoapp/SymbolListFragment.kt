@@ -30,6 +30,7 @@ class SymbolListFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
     private val symbols = mutableListOf<Symbol>()
     private val filteredSymbols = mutableListOf<Symbol>()
+    private var selectedTag: String = "すべて"
     private lateinit var adapter: SymbolAdapter
 
     override fun onCreateView(
@@ -69,6 +70,7 @@ class SymbolListFragment : Fragment() {
         
         val editTitle = dialogView.findViewById<TextInputEditText>(R.id.edit_symbol_title)
         val editContent = dialogView.findViewById<TextInputEditText>(R.id.edit_symbol_content)
+        val editTags = dialogView.findViewById<TextInputEditText>(R.id.edit_symbol_tags)
         val chipGroup = dialogView.findViewById<ChipGroup>(R.id.chip_group_language)
         val btnFillTest = dialogView.findViewById<View>(R.id.btn_fill_test_data)
         val btnCancel = dialogView.findViewById<View>(R.id.btn_cancel_symbol)
@@ -77,6 +79,7 @@ class SymbolListFragment : Fragment() {
         symbol?.let {
             editTitle.setText(it.title)
             editContent.setText(it.content)
+            editTags?.setText(it.tags.joinToString(", "))
             // Set chip selection based on language
             for (i in 0 until chipGroup.childCount) {
                 val chip = chipGroup.getChildAt(i) as? Chip
@@ -110,13 +113,18 @@ class SymbolListFragment : Fragment() {
             val language = if (selectedChipId != View.NO_ID) {
                 dialogView.findViewById<Chip>(selectedChipId).text.toString()
             } else ""
-            saveSymbol(symbol, editTitle.text.toString(), editContent.text.toString(), language)
+            val tagsList = editTags?.text?.toString()
+                ?.split(",", " ", "、")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() } ?: emptyList()
+
+            saveSymbol(symbol, editTitle.text.toString(), editContent.text.toString(), language, tagsList)
             dialog.dismiss()
         }
         dialog.show()
     }
 
-    private fun saveSymbol(existingSymbol: Symbol?, title: String, content: String, language: String) {
+    private fun saveSymbol(existingSymbol: Symbol?, title: String, content: String, language: String, tags: List<String>) {
         val userId = auth.currentUser?.uid ?: return
         val symbolId = existingSymbol?.id ?: db.collection("symbols").document().id
 
@@ -127,7 +135,8 @@ class SymbolListFragment : Fragment() {
             content = content,
             created_at = existingSymbol?.created_at ?: System.currentTimeMillis().toString(),
             updated_at = System.currentTimeMillis().toString(),
-            language = language
+            language = language,
+            tags = tags
         )
 
         db.collection("symbols").document(symbolId).set(symbol)
@@ -164,18 +173,57 @@ class SymbolListFragment : Fragment() {
         })
     }
 
+    private fun populateTagFilterChips() {
+        val chipGroup = _binding?.chipGroupTagFilter ?: return
+        val currentContext = context ?: return
+        val allTags = symbols.flatMap { it.tags }.filter { it.isNotEmpty() }.distinct().sorted()
+
+        chipGroup.removeAllViews()
+
+        val allChip = Chip(currentContext)
+        allChip.id = View.generateViewId()
+        allChip.text = "すべて"
+        allChip.isCheckable = true
+        allChip.isChecked = (selectedTag == "すべて")
+        chipGroup.addView(allChip)
+
+        allTags.forEach { tag ->
+            val chip = Chip(currentContext)
+            chip.id = View.generateViewId()
+            chip.text = tag
+            chip.isCheckable = true
+            chip.isChecked = (selectedTag == tag)
+            chipGroup.addView(chip)
+        }
+
+        if (chipGroup.checkedChipId == View.NO_ID) {
+            allChip.isChecked = true
+            selectedTag = "すべて"
+        }
+
+        chipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+            val checkedId = group.checkedChipId
+            val chip = group.findViewById<Chip>(checkedId)
+            selectedTag = chip?.text?.toString() ?: "すべて"
+            filter(binding.searchViewSymbols.query.toString())
+        }
+    }
+
     private fun filter(text: String) {
         filteredSymbols.clear()
-        if (text.isEmpty()) {
-            filteredSymbols.addAll(symbols)
-        } else {
-            val query = text.lowercase()
-            for (symbol in symbols) {
-                if (symbol.title.lowercase().contains(query) || 
+        val query = text.lowercase().trim()
+
+        for (symbol in symbols) {
+            val matchesQuery = query.isEmpty() ||
+                    symbol.title.lowercase().contains(query) ||
                     symbol.content.lowercase().contains(query) ||
-                    symbol.language.lowercase().contains(query)) {
-                    filteredSymbols.add(symbol)
-                }
+                    symbol.language.lowercase().contains(query) ||
+                    symbol.tags.any { it.lowercase().contains(query) }
+
+            val matchesTag = selectedTag == "すべて" || symbol.tags.contains(selectedTag)
+
+            if (matchesQuery && matchesTag) {
+                filteredSymbols.add(symbol)
             }
         }
         adapter.notifyDataSetChanged()
@@ -196,6 +244,7 @@ class SymbolListFragment : Fragment() {
                     // Sort by updated_at descending if available
                     symbols.sortByDescending { it.updated_at }
 
+                    populateTagFilterChips()
                     filter(binding.searchViewSymbols.query.toString())
                     Log.d("Firestore", "Updated symbols: ${symbols.size}")
                 }
@@ -211,6 +260,7 @@ class SymbolListFragment : Fragment() {
             val title: TextView = v.findViewById(R.id.text_symbol_title)
             val content: TextView = v.findViewById(R.id.text_symbol_content)
             val chipLanguage: Chip = v.findViewById(R.id.chip_language)
+            val chipGroupTags: ChipGroup = v.findViewById(R.id.chip_group_item_tags)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -228,6 +278,21 @@ class SymbolListFragment : Fragment() {
                 holder.chipLanguage.text = symbol.language
             } else {
                 holder.chipLanguage.visibility = View.GONE
+            }
+
+            holder.chipGroupTags.removeAllViews()
+            if (symbol.tags.isNotEmpty()) {
+                holder.chipGroupTags.visibility = View.VISIBLE
+                val ctx = holder.itemView.context
+                for (tag in symbol.tags) {
+                    val tagChip = Chip(ctx)
+                    tagChip.text = tag
+                    tagChip.isClickable = false
+                    tagChip.isCheckable = false
+                    holder.chipGroupTags.addView(tagChip)
+                }
+            } else {
+                holder.chipGroupTags.visibility = View.GONE
             }
             
             holder.itemView.setOnClickListener { onClick(symbol) }
