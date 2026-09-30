@@ -64,9 +64,9 @@ class ReFormationDetailFragment : Fragment() {
                             } else {
                                 ConceptScreen(
                                     viewModel = viewModel,
-                                    onShowTextDialog = { x, y -> /* Not used much in reFormation */ },
+                                    onShowTextDialog = { x, y -> showTextInputDialog(x, y) },
                                     onShowColorPicker = { /* Handled in Style Modal */ },
-                                    onEditSelectedText = { /* Handled in Style Modal */ },
+                                    onEditSelectedText = { element -> showEditTextViewDialog(element) },
                                     onNavigateToItem = { type, id ->
                                         val bundle = Bundle()
                                         when (type) {
@@ -88,6 +88,66 @@ class ReFormationDetailFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun showTextInputDialog(x: Float, y: Float) {
+        val editText = android.widget.EditText(requireContext())
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Enter Text")
+            .setView(editText)
+            .setPositiveButton("OK") { _, _ ->
+                val text = editText.text.toString()
+                if (text.isNotEmpty()) {
+                    viewModel.addElement("TEXT", x, y, text)
+                }
+                viewModel.setMode(ConceptMode.PAN_ZOOM)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showEditTextViewDialog(element: CanvasElement) {
+        val layout = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(40, 20, 40, 20)
+        }
+
+        val editTextInput = android.widget.EditText(requireContext()).apply {
+            hint = "テキスト"
+            setText(element.text)
+        }
+        val editSizeInput = android.widget.EditText(requireContext()).apply {
+            hint = "サイズ"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setText(element.fontSize.toInt().toString())
+        }
+
+        layout.addView(editTextInput)
+        layout.addView(editSizeInput)
+
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("テキスト編集")
+            .setView(layout)
+            .setPositiveButton("適用") { _, _ ->
+                val newText = editTextInput.text.toString()
+                val newSize = editSizeInput.text.toString().toFloatOrNull() ?: element.fontSize
+                
+                val paint = android.graphics.Paint()
+                paint.textSize = newSize
+                val bounds = android.graphics.Rect()
+                paint.getTextBounds(newText, 0, newText.length, bounds)
+                
+                val updatedElement = element.copy(
+                    text = newText,
+                    fontSize = newSize,
+                    width = bounds.width().toFloat() + 20f,
+                    height = newSize + 10f
+                )
+                
+                viewModel.updateElement(updatedElement)
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
     }
 }
 

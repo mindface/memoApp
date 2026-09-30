@@ -214,6 +214,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             height = 80f,
             text = title,
             color = android.graphics.Color.WHITE,
+            fontSize = 16f,
             strokeColor = when(itemType) {
                 "NOTE" -> android.graphics.Color.BLUE
                 "LOG_ITEM" -> android.graphics.Color.GREEN
@@ -432,16 +433,22 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     fun changeFontSize(delta: Float) {
         _selectedElement.value?.let { element ->
-            if (element.type == "TEXT") {
-                val newSize = (element.fontSize + delta).coerceAtLeast(10f)
-                val ratio = newSize / element.fontSize
-                val updated = element.copy(
+            val newSize = (element.fontSize + delta).coerceAtLeast(8f)
+            val ratio = if (element.fontSize > 0f) newSize / element.fontSize else 1f
+            val updated = if (element.type == "RECTANGLE" && element.linkedItemId != null) {
+                element.copy(
+                    fontSize = newSize,
+                    width = (element.width * ratio).coerceAtLeast(100f),
+                    height = (element.height * ratio).coerceAtLeast(40f)
+                )
+            } else {
+                element.copy(
                     fontSize = newSize,
                     width = element.width * ratio,
                     height = newSize + 10f
                 )
-                updateElement(updated)
             }
+            updateElement(updated)
         }
     }
 

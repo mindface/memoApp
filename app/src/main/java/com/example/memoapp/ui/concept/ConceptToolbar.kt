@@ -16,7 +16,7 @@ import com.example.memoapp.ConceptMode
 fun ConceptToolbar(
     currentMode: ConceptMode,
     isGridEnabled: Boolean,
-    isReFormation: Boolean = false,
+    isReFormation: Boolean,
     onModeChange: (ConceptMode) -> Unit,
     onToggleGrid: () -> Unit,
     onSaveLocal: () -> Unit,
