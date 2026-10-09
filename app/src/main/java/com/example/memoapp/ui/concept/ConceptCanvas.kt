@@ -41,6 +41,7 @@ fun ConceptCanvas(
     onElementUpdate: (CanvasElement) -> Unit,
     onViewStateUpdate: (Offset, Float) -> Unit,
     onSnapToGrid: (Float) -> Float,
+    onOpenItemDetail: (CanvasElement) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentElements by rememberUpdatedState(elements)
@@ -50,6 +51,7 @@ fun ConceptCanvas(
     val currentOnElementUpdate by rememberUpdatedState(onElementUpdate)
     val currentOnViewStateUpdate by rememberUpdatedState(onViewStateUpdate)
     val currentOnSnapToGrid by rememberUpdatedState(onSnapToGrid)
+    val currentOnOpenItemDetail by rememberUpdatedState(onOpenItemDetail)
 
     var scale by remember { mutableFloatStateOf(viewScale) }
     var offset by remember { mutableStateOf(viewOffset) }
@@ -75,7 +77,10 @@ fun ConceptCanvas(
         var w = el.width
         var h = el.height
         
-        if (el.type == "TEXT") {
+        if (el.linkedItemId != null) {
+            w = 50f + resizeDelta.x.coerceAtLeast(-20f)
+            h = 50f + resizeDelta.y.coerceAtLeast(-20f)
+        } else if (el.type == "TEXT") {
             val fontSize = (el.fontSize + resizeDelta.y).coerceAtLeast(10f)
             val layout = textMeasurer.measure(
                 el.text,
@@ -96,7 +101,9 @@ fun ConceptCanvas(
     // Auto-update newly added elements
     LaunchedEffect(currentElements) {
         currentElements.forEach { element ->
-            if (element.type == "TEXT" && element.width <= 1f && element.text.isNotEmpty()) {
+            if (element.linkedItemId != null && element.width != 50f) {
+                currentOnElementUpdate(element.copy(width = 50f, height = 50f))
+            } else if (element.type == "TEXT" && element.width <= 1f && element.text.isNotEmpty()) {
                 val bounds = getElementBounds(element)
                 currentOnElementUpdate(element.copy(width = bounds.width, height = bounds.height))
             }
@@ -232,6 +239,9 @@ fun ConceptCanvas(
                         } else if (bodyHit != null) {
                             // If clicked on an element, make sure it is selected
                             currentOnSelectElement(bodyHit)
+                            if (bodyHit.linkedItemId != null) {
+                                currentOnOpenItemDetail(bodyHit)
+                            }
                         } else {
                             // Clicked on empty space
                             currentOnSelectElement(null)
@@ -279,45 +289,77 @@ fun ConceptCanvas(
                 withTransform({ rotate(renderRotation, renderCenter) }) {
                     when (element.type) {
                         "RECTANGLE" -> {
-                            // Fill
-                            if (element.drawStyle == 0 || element.drawStyle == 1) {
-                                drawRect(
-                                    color = color,
-                                    topLeft = Offset(renderX, renderY),
-                                    size = Size(renderW, renderH)
+                            val isLinked = element.linkedItemId != null
+                            if (isLinked) {
+                                val radius = renderW / 2
+                                val badgeCenter = Offset(renderX + radius, renderY + radius)
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = radius,
+                                    center = badgeCenter
                                 )
-                            }
-                            // Outline
-                            if (element.drawStyle == 0 || element.drawStyle == 2) {
-                                drawRect(
-                                    color = Color(element.strokeColor),
-                                    topLeft = Offset(renderX, renderY),
-                                    size = Size(renderW, renderH),
-                                    style = Stroke(width = 2f / safeScale)
+                                drawCircle(
+                                    color = Color(0xFF4285F4),
+                                    radius = radius,
+                                    center = badgeCenter,
+                                    style = Stroke(width = 3f / safeScale)
                                 )
-                            }
-                            // Text inside RECTANGLE (e.g. linked article title)
-                            if (element.text.isNotEmpty()) {
-                                val iconOffset = if (element.linkedItemId != null) 36f else 8f
-                                val maxW = (renderW - iconOffset - 8f).coerceAtLeast(10f).toInt()
+                                val indexNum = elements.indexOf(element) + 1
                                 val layout = textMeasurer.measure(
-                                    text = element.text,
+                                    text = "$indexNum",
                                     style = androidx.compose.ui.text.TextStyle(
                                         color = Color.Black,
-                                        fontSize = element.fontSize.sp,
+                                        fontSize = 16.sp,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                    ),
-                                    maxLines = 2,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = maxW)
+                                    )
                                 )
                                 drawText(
                                     textLayoutResult = layout,
                                     topLeft = Offset(
-                                        renderX + iconOffset,
-                                        renderY + (renderH - layout.size.height) / 2f
+                                        badgeCenter.x - layout.size.width / 2f,
+                                        badgeCenter.y - layout.size.height / 2f
                                     )
                                 )
+                            } else {
+                                // Fill
+                                if (element.drawStyle == 0 || element.drawStyle == 1) {
+                                    drawRect(
+                                        color = color,
+                                        topLeft = Offset(renderX, renderY),
+                                        size = Size(renderW, renderH)
+                                    )
+                                }
+                                // Outline
+                                if (element.drawStyle == 0 || element.drawStyle == 2) {
+                                    drawRect(
+                                        color = Color(element.strokeColor),
+                                        topLeft = Offset(renderX, renderY),
+                                        size = Size(renderW, renderH),
+                                        style = Stroke(width = 2f / safeScale)
+                                    )
+                                }
+                                // Text inside RECTANGLE (e.g. linked article title)
+                                if (element.text.isNotEmpty()) {
+                                    val maxW = (renderW - 16f).coerceAtLeast(10f).toInt()
+                                    val layout = textMeasurer.measure(
+                                        text = element.text,
+                                        style = androidx.compose.ui.text.TextStyle(
+                                            color = Color.Black,
+                                            fontSize = element.fontSize.sp,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        ),
+                                        maxLines = 2,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        constraints = androidx.compose.ui.unit.Constraints(maxWidth = maxW)
+                                    )
+                                    drawText(
+                                        textLayoutResult = layout,
+                                        topLeft = Offset(
+                                            renderX + 8f,
+                                            renderY + (renderH - layout.size.height) / 2f
+                                        )
+                                    )
+                                }
                             }
                         }
                         "CIRCLE" -> {

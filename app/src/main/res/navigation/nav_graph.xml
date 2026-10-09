@@ -36,6 +36,9 @@
             android:id="@+id/action_HomeFragment_to_ReFormationListFragment"
             app:destination="@id/ReFormationListFragment" />
         <action
+            android:id="@+id/action_HomeFragment_to_MeasurementListFragment"
+            app:destination="@id/MeasurementListFragment" />
+        <action
             android:id="@+id/action_HomeFragment_to_LoginFragment"
             app:destination="@id/LoginFragment"
             app:popUpTo="@id/nav_graph"
@@ -122,6 +125,24 @@
         <action
             android:id="@+id/action_ReFormationDetailFragment_to_ConceptFragment"
             app:destination="@id/ConceptFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/MeasurementListFragment"
+        android:name="com.example.memoapp.MeasurementListFragment"
+        android:label="Measurement List">
+        <action
+            android:id="@+id/action_MeasurementListFragment_to_MeasurementDetailFragment"
+            app:destination="@id/MeasurementDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/MeasurementDetailFragment"
+        android:name="com.example.memoapp.MeasurementDetailFragment"
+        android:label="Measurement Detail">
+        <argument
+            android:name="measurementPageId"
+            app:argType="string" />
     </fragment>
 
 </navigation>

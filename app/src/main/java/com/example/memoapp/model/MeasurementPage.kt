@@ -4,7 +4,7 @@ import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.PropertyName
 import java.io.Serializable
 
-data class ReFormation(
+data class MeasurementPage(
     @get:PropertyName("id") @set:PropertyName("id")
     var id: String = "",
 
