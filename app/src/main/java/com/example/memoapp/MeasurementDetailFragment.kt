@@ -71,6 +71,7 @@ class MeasurementDetailFragment : Fragment() {
                                     onDelete = { id -> viewModel.deleteElement(id) },
                                     onSelectElement = { id -> viewModel.selectElementId(id) },
                                     onMoveSelected = { dx, dy -> viewModel.moveSelectedElement(dx, dy) },
+                                    onRepositionSelected = { id, x, y -> viewModel.repositionElement(id, x, y) },
                                     onElementUpdate = { el -> viewModel.updateElement(el) },
                                     onCanvasClick = { x, y ->
                                         viewModel.setInsertionPoint(x, y)

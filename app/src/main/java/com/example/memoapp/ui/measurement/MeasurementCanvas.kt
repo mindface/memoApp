@@ -3,6 +3,7 @@ package com.example.memoapp.ui.measurement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -28,6 +29,7 @@ fun MeasurementCanvas(
     onDelete: (String) -> Unit,
     onSelectElement: (String?) -> Unit,
     onMoveSelected: (Float, Float) -> Unit,
+    onRepositionSelected: (String, Float, Float) -> Unit,
     onElementUpdate: (CounterElement) -> Unit,
     onCanvasClick: (Float, Float) -> Unit,
     onViewStateUpdate: (Offset, Float) -> Unit,
@@ -53,8 +55,18 @@ fun MeasurementCanvas(
                     onViewStateUpdate(offset, scale)
                 }
             }
-            .clickable {
-                onSelectElement(null)
+            .pointerInput(selectedElementId) {
+                detectTapGestures(
+                    onTap = { tapOffset ->
+                        val cx = (tapOffset.x - offset.x) / scale
+                        val cy = (tapOffset.y - offset.y) / scale
+                        if (selectedElementId != null) {
+                            onRepositionSelected(selectedElementId, cx, cy)
+                        } else {
+                            onCanvasClick(cx, cy)
+                        }
+                    }
+                )
             }
     ) {
         elements.forEach { element ->

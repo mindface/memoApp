@@ -62,6 +62,17 @@ class MeasurementViewModel(application: Application, savedStateHandle: SavedStat
         }
     }
 
+    fun repositionElement(elementId: String, x: Float, y: Float) {
+        val index = elements.indexOfFirst { it.id == elementId }
+        if (index != -1) {
+            val el = elements[index]
+            val updated = el.copy(x = x - el.width / 2f, y = y - el.height / 2f)
+            elements[index] = updated
+            db.collection("counter_elements").document(elementId).set(updated)
+            _selectedElementId.value = null
+        }
+    }
+
     private val _availableSymbols = MutableStateFlow<List<Symbol>>(emptyList())
     val availableSymbols: StateFlow<List<Symbol>> = _availableSymbols.asStateFlow()
 
