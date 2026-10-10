@@ -44,6 +44,24 @@ class MeasurementViewModel(application: Application, savedStateHandle: SavedStat
     private val _activeModal = MutableStateFlow(MeasurementModalType.NONE)
     val activeModal: StateFlow<MeasurementModalType> = _activeModal.asStateFlow()
 
+    private val _selectedElementId = MutableStateFlow<String?>(null)
+    val selectedElementId: StateFlow<String?> = _selectedElementId.asStateFlow()
+
+    fun selectElementId(id: String?) {
+        _selectedElementId.value = id
+    }
+
+    fun moveSelectedElement(dx: Float, dy: Float) {
+        val id = _selectedElementId.value ?: return
+        val index = elements.indexOfFirst { it.id == id }
+        if (index != -1) {
+            val el = elements[index]
+            val updated = el.copy(x = el.x + dx, y = el.y + dy)
+            elements[index] = updated
+            db.collection("counter_elements").document(id).set(updated)
+        }
+    }
+
     private val _availableSymbols = MutableStateFlow<List<Symbol>>(emptyList())
     val availableSymbols: StateFlow<List<Symbol>> = _availableSymbols.asStateFlow()
 

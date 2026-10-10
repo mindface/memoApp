@@ -39,6 +39,7 @@ class MeasurementDetailFragment : Fragment() {
                 val availableNotes by viewModel.availableNotes.collectAsStateWithLifecycle()
                 val availableLogItems by viewModel.availableLogItems.collectAsStateWithLifecycle()
                 val availableConcepts by viewModel.availableConcepts.collectAsStateWithLifecycle()
+                val selectedElementId by viewModel.selectedElementId.collectAsStateWithLifecycle()
 
                 MaterialTheme {
                     Scaffold(
@@ -63,11 +64,13 @@ class MeasurementDetailFragment : Fragment() {
                             if (selectedTabIndex == 0) {
                                 MeasurementCanvas(
                                     elements = elements,
+                                    selectedElementId = selectedElementId,
                                     viewOffset = viewOffset,
                                     viewScale = viewScale,
                                     onIncrement = { id -> viewModel.incrementCount(id) },
                                     onDelete = { id -> viewModel.deleteElement(id) },
-                                    onBringToFront = { id -> viewModel.bringToFront(id) },
+                                    onSelectElement = { id -> viewModel.selectElementId(id) },
+                                    onMoveSelected = { dx, dy -> viewModel.moveSelectedElement(dx, dy) },
                                     onElementUpdate = { el -> viewModel.updateElement(el) },
                                     onCanvasClick = { x, y ->
                                         viewModel.setInsertionPoint(x, y)
