@@ -17,6 +17,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.memoapp.model.CanvasElement
 import com.example.memoapp.model.Concept
+import com.example.memoapp.model.ReFormation
 import com.example.memoapp.model.Symbol
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -107,6 +108,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     val selectedItemDetail: StateFlow<Pair<String, String>?> = _selectedItemDetail.asStateFlow()
 
     private var conceptMetadata: Concept? = null
+    private var reFormationMetadata: ReFormation? = null
     private var symbolsListener: ListenerRegistration? = null
     private var notesListener: ListenerRegistration? = null
     private var conceptsListener: ListenerRegistration? = null
@@ -461,24 +463,53 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private fun fetchCanvasElements() {
         if (conceptId.isEmpty()) return
         
-        val localRepo = ConceptLocalRepository(getApplication())
-        val localData = localRepo.loadLocal(conceptId)
-        if (localData != null) {
-            _isLocalOnly.value = true
-            conceptMetadata = localData.concept
-            _viewOffset.value = Offset(localData.concept.lastViewX, localData.concept.lastViewY)
-            _viewScale.value = localData.concept.lastViewScale
-            elements.clear()
-            elements.addAll(localData.elements)
-        }
+        val context = getApplication<Application>()
+        var hasLocal = false
+        
+        if (isReFormation) {
+            val localRepo = ReFormationLocalRepository(context)
+            val localData = localRepo.loadLocal(conceptId)
+            if (localData != null) {
+                hasLocal = true
+                _isLocalOnly.value = true
+                reFormationMetadata = localData.reformation
+                _viewOffset.value = Offset(localData.reformation.lastViewX, localData.reformation.lastViewY)
+                _viewScale.value = localData.reformation.lastViewScale
+                elements.clear()
+                elements.addAll(localData.elements)
+            }
 
-        db.collection("concepts").document(conceptId).get().addOnSuccessListener { doc ->
-            doc.toObject(Concept::class.java)?.let { concept ->
-                conceptMetadata = concept
-                if (localData == null) {
-                    _viewOffset.value = Offset(concept.lastViewX, concept.lastViewY)
-                    _viewScale.value = if (concept.lastViewScale > 0.01f) concept.lastViewScale else 1f
-                    _isLocalOnly.value = false
+            db.collection("reformations").document(conceptId).get().addOnSuccessListener { doc ->
+                doc.toObject(ReFormation::class.java)?.let { ref ->
+                    reFormationMetadata = ref
+                    if (!hasLocal) {
+                        _viewOffset.value = Offset(ref.lastViewX, ref.lastViewY)
+                        _viewScale.value = if (ref.lastViewScale > 0.01f) ref.lastViewScale else 1f
+                        _isLocalOnly.value = false
+                    }
+                }
+            }
+        } else {
+            val localRepo = ConceptLocalRepository(context)
+            val localData = localRepo.loadLocal(conceptId)
+            if (localData != null) {
+                hasLocal = true
+                _isLocalOnly.value = true
+                conceptMetadata = localData.concept
+                _viewOffset.value = Offset(localData.concept.lastViewX, localData.concept.lastViewY)
+                _viewScale.value = localData.concept.lastViewScale
+                elements.clear()
+                elements.addAll(localData.elements)
+            }
+
+            db.collection("concepts").document(conceptId).get().addOnSuccessListener { doc ->
+                doc.toObject(Concept::class.java)?.let { concept ->
+                    conceptMetadata = concept
+                    if (!hasLocal) {
+                        _viewOffset.value = Offset(concept.lastViewX, concept.lastViewY)
+                        _viewScale.value = if (concept.lastViewScale > 0.01f) concept.lastViewScale else 1f
+                        _isLocalOnly.value = false
+                    }
                 }
             }
         }
@@ -494,7 +525,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
                     } catch (err: Exception) { null }
                 }.sortedBy { it.zIndex }
                 
-                if (localData == null) {
+                if (!hasLocal) {
                     elements.clear()
                     elements.addAll(list)
                 }
@@ -505,17 +536,29 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         val userId = auth.currentUser?.uid ?: return
         if (conceptId.isEmpty()) return
 
-        val currentConcept = conceptMetadata ?: Concept(id = conceptId, userId = userId, title = "Untitled")
-        val updatedConcept = currentConcept.copy(
-            lastViewX = _viewOffset.value.x,
-            lastViewY = _viewOffset.value.y,
-            lastViewScale = _viewScale.value,
-            updatedAt = System.currentTimeMillis(),
-            hasSharedContent = elements.any { it.isShared }
-        )
-        conceptMetadata = updatedConcept
-
-        ConceptLocalRepository(context).saveLocal(updatedConcept, elements.toList())
+        if (isReFormation) {
+            val currentRef = reFormationMetadata ?: ReFormation(id = conceptId, userId = userId, title = "Untitled")
+            val updatedRef = currentRef.copy(
+                lastViewX = _viewOffset.value.x,
+                lastViewY = _viewOffset.value.y,
+                lastViewScale = _viewScale.value,
+                updatedAt = System.currentTimeMillis(),
+                hasSharedContent = elements.any { it.isShared }
+            )
+            reFormationMetadata = updatedRef
+            ReFormationLocalRepository(context).saveLocal(updatedRef, elements.toList())
+        } else {
+            val currentConcept = conceptMetadata ?: Concept(id = conceptId, userId = userId, title = "Untitled")
+            val updatedConcept = currentConcept.copy(
+                lastViewX = _viewOffset.value.x,
+                lastViewY = _viewOffset.value.y,
+                lastViewScale = _viewScale.value,
+                updatedAt = System.currentTimeMillis(),
+                hasSharedContent = elements.any { it.isShared }
+            )
+            conceptMetadata = updatedConcept
+            ConceptLocalRepository(context).saveLocal(updatedConcept, elements.toList())
+        }
         viewModelScope.launch { _exportResult.emit("ローカルに保存しました") }
     }
 
@@ -528,26 +571,42 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             return
         }
 
-        // 1. Save locally first to ensure state is consistent
-        val currentConcept = conceptMetadata ?: Concept(id = conceptId, userId = userId, title = "Untitled")
         val anyShared = elements.any { it.isShared }
-        val updatedConcept = currentConcept.copy(
-            lastViewX = _viewOffset.value.x,
-            lastViewY = _viewOffset.value.y,
-            lastViewScale = _viewScale.value,
-            updatedAt = System.currentTimeMillis(),
-            hasSharedContent = anyShared
-        )
-        conceptMetadata = updatedConcept
-        ConceptLocalRepository(context).saveLocal(updatedConcept, elements.toList())
+        val collectionName = if (isReFormation) "reformations" else "concepts"
+
+        val metadataObj: Any = if (isReFormation) {
+            val currentRef = reFormationMetadata ?: ReFormation(id = conceptId, userId = userId, title = "Untitled")
+            val updatedRef = currentRef.copy(
+                lastViewX = _viewOffset.value.x,
+                lastViewY = _viewOffset.value.y,
+                lastViewScale = _viewScale.value,
+                updatedAt = System.currentTimeMillis(),
+                hasSharedContent = anyShared
+            )
+            reFormationMetadata = updatedRef
+            ReFormationLocalRepository(context).saveLocal(updatedRef, elements.toList())
+            updatedRef
+        } else {
+            val currentConcept = conceptMetadata ?: Concept(id = conceptId, userId = userId, title = "Untitled")
+            val updatedConcept = currentConcept.copy(
+                lastViewX = _viewOffset.value.x,
+                lastViewY = _viewOffset.value.y,
+                lastViewScale = _viewScale.value,
+                updatedAt = System.currentTimeMillis(),
+                hasSharedContent = anyShared
+            )
+            conceptMetadata = updatedConcept
+            ConceptLocalRepository(context).saveLocal(updatedConcept, elements.toList())
+            updatedConcept
+        }
 
         // 2. Upload Shared items to Firestore
         val batch = db.batch()
         val sharedElements = elements.filter { it.isShared }
-        
+
         // Note: Elements that were previously shared but now are NOT should be handled.
         // For simplicity in this v1, we focus on uploading what is currently marked as shared.
-        
+
         for (element in sharedElements) {
             val finalId = element.id.ifEmpty { db.collection("canvas_elements").document().id }
             element.id = finalId
@@ -558,7 +617,7 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         }
         
         batch.commit().addOnSuccessListener {
-            db.collection("concepts").document(conceptId).set(updatedConcept)
+            db.collection(collectionName).document(conceptId).set(metadataObj)
             viewModelScope.launch { 
                 _exportResult.emit("Firebaseに同期しました (${sharedElements.size}件)")
                 _saveResult.emit(true)
