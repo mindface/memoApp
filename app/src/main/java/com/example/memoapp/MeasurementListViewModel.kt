@@ -53,4 +53,8 @@ class MeasurementListViewModel(application: Application) : AndroidViewModel(appl
             onComplete(docRef.id)
         }
     }
+
+    fun deleteMeasurementPage(pageId: String) {
+        db.collection("measurements").document(pageId).delete()
+    }
 }

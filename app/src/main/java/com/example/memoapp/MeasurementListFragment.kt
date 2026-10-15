@@ -47,6 +47,9 @@ class MeasurementListFragment : Fragment() {
                             }
                             findNavController().navigate(R.id.action_MeasurementListFragment_to_MeasurementDetailFragment, bundle)
                         },
+                        onDeleteClick = { pageId ->
+                            showDeleteConfirmationDialog(pageId)
+                        },
                         onAddClick = { showAddMeasurementDialog() }
                     )
                 }
@@ -75,6 +78,17 @@ class MeasurementListFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    private fun showDeleteConfirmationDialog(pageId: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("測定プロジェクトの削除")
+            .setMessage("この測定プロジェクトを削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                viewModel.deleteMeasurementPage(pageId)
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +96,7 @@ class MeasurementListFragment : Fragment() {
 fun MeasurementListScreen(
     viewModel: MeasurementListViewModel,
     onPageClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
     onAddClick: () -> Unit
 ) {
     val pages by viewModel.measurementPages.collectAsState()
@@ -102,14 +117,18 @@ fun MeasurementListScreen(
                 .fillMaxSize()
         ) {
             items(pages) { page ->
-                MeasurementPageItem(page, onClick = { onPageClick(page.id) })
+                MeasurementPageItem(
+                    page,
+                    onClick = { onPageClick(page.id) },
+                    onDelete = { onDeleteClick(page.id) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun MeasurementPageItem(page: MeasurementPage, onClick: () -> Unit) {
+fun MeasurementPageItem(page: MeasurementPage, onClick: () -> Unit, onDelete: () -> Unit) {
     val date = remember(page.updatedAt) {
         val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
         sdf.format(Date(page.updatedAt))
@@ -125,12 +144,14 @@ fun MeasurementPageItem(page: MeasurementPage, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = page.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_manage),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_menu_delete),
+                        contentDescription = "Delete",
+                        tint = androidx.compose.ui.graphics.Color.Gray
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = "Last updated: $date", style = MaterialTheme.typography.bodyMedium)

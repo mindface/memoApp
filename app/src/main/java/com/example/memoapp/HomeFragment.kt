@@ -57,6 +57,10 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_HomeFragment_to_MeasurementListFragment)
         }
 
+        binding.buttonToHealth.setOnClickListener {
+            findNavController().navigate(R.id.action_HomeFragment_to_HealthConnectFragment)
+        }
+
         binding.buttonLogout.setOnClickListener {
             auth.signOut()
             findNavController().navigate(R.id.action_HomeFragment_to_LoginFragment)

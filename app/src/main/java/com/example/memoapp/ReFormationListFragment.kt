@@ -47,6 +47,9 @@ class ReFormationListFragment : Fragment() {
                             }
                             findNavController().navigate(R.id.action_ReFormationListFragment_to_ReFormationDetailFragment, bundle)
                         },
+                        onDeleteClick = { reformationId ->
+                            showDeleteConfirmationDialog(reformationId)
+                        },
                         onAddClick = { showAddReFormationDialog() }
                     )
                 }
@@ -75,6 +78,17 @@ class ReFormationListFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    private fun showDeleteConfirmationDialog(reformationId: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("reFormationの削除")
+            .setMessage("このプロジェクトを削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                viewModel.deleteReFormation(reformationId)
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +96,7 @@ class ReFormationListFragment : Fragment() {
 fun ReFormationListScreen(
     viewModel: ReFormationListViewModel,
     onReFormationClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
     onAddClick: () -> Unit
 ) {
     val reformations by viewModel.reformations.collectAsState()
@@ -102,14 +117,18 @@ fun ReFormationListScreen(
                 .fillMaxSize()
         ) {
             items(reformations) { ref ->
-                ReFormationItem(ref, onClick = { onReFormationClick(ref.id) })
+                ReFormationItem(
+                    ref,
+                    onClick = { onReFormationClick(ref.id) },
+                    onDelete = { onDeleteClick(ref.id) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun ReFormationItem(ref: ReFormation, onClick: () -> Unit) {
+fun ReFormationItem(ref: ReFormation, onClick: () -> Unit, onDelete: () -> Unit) {
     val date = remember(ref.updatedAt) {
         val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
         sdf.format(Date(ref.updatedAt))
@@ -122,15 +141,17 @@ fun ReFormationItem(ref: ReFormation, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(36.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = ref.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_sort_by_size),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_menu_delete),
+                        contentDescription = "Delete",
+                        tint = androidx.compose.ui.graphics.Color.Gray
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = "Last updated: $date", style = MaterialTheme.typography.bodyMedium)

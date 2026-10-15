@@ -43,10 +43,16 @@ class LogItemListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = LogItemAdapter(items) { item ->
-            val bundle = Bundle().apply { putString("logItemId", item.id) }
-            findNavController().navigate(R.id.action_LogItemListFragment_to_LogItemFragment, bundle)
-        }
+        adapter = LogItemAdapter(
+            items,
+            onClick = { item ->
+                val bundle = Bundle().apply { putString("logItemId", item.id) }
+                findNavController().navigate(R.id.action_LogItemListFragment_to_LogItemFragment, bundle)
+            },
+            onDelete = { item ->
+                showDeleteConfirmationDialog(item.id)
+            }
+        )
         binding.recyclerViewLogItems.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewLogItems.adapter = adapter
     }
@@ -57,6 +63,18 @@ class LogItemListFragment : Fragment() {
         adapter.notifyDataSetChanged()
     }
 
+    private fun showDeleteConfirmationDialog(itemId: String) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("ログの削除")
+            .setMessage("このログを削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                repository.delete(itemId)
+                loadItems()
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -64,12 +82,14 @@ class LogItemListFragment : Fragment() {
 
     class LogItemAdapter(
         private val list: List<LogItem>,
-        private val onClick: (LogItem) -> Unit
+        private val onClick: (LogItem) -> Unit,
+        private val onDelete: (LogItem) -> Unit
     ) : RecyclerView.Adapter<LogItemAdapter.ViewHolder>() {
 
         class ViewHolder(v: View) : RecyclerView.ViewHolder(v) {
             val title: TextView = v.findViewById(R.id.text_title)
             val content: TextView = v.findViewById(R.id.text_content)
+            val btnDelete: View = v.findViewById(R.id.btn_delete)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -82,6 +102,7 @@ class LogItemListFragment : Fragment() {
             holder.title.text = item.title
             holder.content.text = item.content
             holder.itemView.setOnClickListener { onClick(item) }
+            holder.btnDelete.setOnClickListener { onDelete(item) }
         }
 
         override fun getItemCount() = list.size

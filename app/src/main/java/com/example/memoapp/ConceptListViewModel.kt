@@ -68,4 +68,9 @@ class ConceptListViewModel(application: Application) : AndroidViewModel(applicat
             onComplete(docRef.id)
         }
     }
+
+    fun deleteConcept(conceptId: String) {
+        db.collection("concepts").document(conceptId).delete()
+        localRepo.deleteLocal(conceptId)
+    }
 }

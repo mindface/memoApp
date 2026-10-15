@@ -39,6 +39,9 @@
             android:id="@+id/action_HomeFragment_to_MeasurementListFragment"
             app:destination="@id/MeasurementListFragment" />
         <action
+            android:id="@+id/action_HomeFragment_to_HealthConnectFragment"
+            app:destination="@id/HealthConnectFragment" />
+        <action
             android:id="@+id/action_HomeFragment_to_LoginFragment"
             app:destination="@id/LoginFragment"
             app:popUpTo="@id/nav_graph"
@@ -144,5 +147,10 @@
             android:name="measurementPageId"
             app:argType="string" />
     </fragment>
+
+    <fragment
+        android:id="@+id/HealthConnectFragment"
+        android:name="com.example.memoapp.HealthConnectFragment"
+        android:label="Health Connect" />
 
 </navigation>

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
@@ -47,6 +48,9 @@ class ConceptListFragment : Fragment() {
                             }
                             findNavController().navigate(R.id.action_ConceptListFragment_to_ConceptFragment, bundle)
                         },
+                        onDeleteClick = { conceptId ->
+                            showDeleteConfirmationDialog(conceptId)
+                        },
                         onAddClick = { showAddConceptDialog() }
                     )
                 }
@@ -75,6 +79,17 @@ class ConceptListFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    private fun showDeleteConfirmationDialog(conceptId: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("コンセプトの削除")
+            .setMessage("このコンセプトを削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                viewModel.deleteConcept(conceptId)
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +97,7 @@ class ConceptListFragment : Fragment() {
 fun ConceptListScreen(
     viewModel: ConceptListViewModel,
     onConceptClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
     onAddClick: () -> Unit
 ) {
     val concepts by viewModel.concepts.collectAsState()
@@ -102,14 +118,18 @@ fun ConceptListScreen(
                 .fillMaxSize()
         ) {
             items(concepts) { concept ->
-                ConceptItem(concept, onClick = { onConceptClick(concept.id) })
+                ConceptItem(
+                    concept,
+                    onClick = { onConceptClick(concept.id) },
+                    onDelete = { onDeleteClick(concept.id) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun ConceptItem(concept: Concept, onClick: () -> Unit) {
+fun ConceptItem(concept: Concept, onClick: () -> Unit, onDelete: () -> Unit) {
     val date = remember(concept.updatedAt) {
         val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
         sdf.format(Date(concept.updatedAt))
@@ -148,6 +168,14 @@ fun ConceptItem(concept: Concept, onClick: () -> Unit) {
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
+                }
+
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painter = painterResource(id = android.R.drawable.ic_menu_delete),
+                        contentDescription = "Delete",
+                        tint = Color.Gray
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(4.dp))

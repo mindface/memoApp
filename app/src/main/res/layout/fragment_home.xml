@@ -123,7 +123,7 @@
         app:layout_constraintTop_toTopOf="@+id/button_to_notes"
         app:layout_constraintBottom_toBottomOf="@+id/button_to_notes" />
 
-    <!-- Row 2 (3 buttons) -->
+    <!-- Row 2 (4 buttons) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_to_reformation"
         style="@style/Widget.Material3.Button.TonalButton"
@@ -169,9 +169,34 @@
         app:iconPadding="2dp"
         app:iconSize="28dp"
         app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@+id/button_logout"
+        app:layout_constraintEnd_toStartOf="@+id/button_to_health"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/button_to_reformation"
+        app:layout_constraintTop_toTopOf="@+id/button_to_reformation"
+        app:layout_constraintBottom_toBottomOf="@+id/button_to_reformation" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_to_health"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="6dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="Health"
+        android:textAllCaps="false"
+        android:textSize="11sp"
+        app:cornerRadius="16dp"
+        app:icon="@android:drawable/ic_menu_my_calendar"
+        app:iconGravity="top"
+        app:iconPadding="2dp"
+        app:iconSize="28dp"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintEnd_toStartOf="@+id/button_logout"
+        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintStart_toEndOf="@+id/button_to_measurement"
         app:layout_constraintTop_toTopOf="@+id/button_to_reformation"
         app:layout_constraintBottom_toBottomOf="@+id/button_to_reformation" />
 
@@ -199,7 +224,7 @@
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/button_to_measurement"
+        app:layout_constraintStart_toEndOf="@+id/button_to_health"
         app:layout_constraintTop_toTopOf="@+id/button_to_reformation"
         app:layout_constraintBottom_toBottomOf="@+id/button_to_reformation" />
 
