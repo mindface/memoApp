@@ -54,4 +54,8 @@ class ReFormationListViewModel(application: Application) : AndroidViewModel(appl
             onComplete(docRef.id)
         }
     }
+
+    fun deleteReFormation(reformationId: String) {
+        db.collection("reformations").document(reformationId).delete()
+    }
 }

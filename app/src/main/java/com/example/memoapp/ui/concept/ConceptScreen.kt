@@ -109,7 +109,8 @@ fun ConceptScreen(
                 },
                 onElementUpdate = { viewModel.updateElement(it) },
                 onViewStateUpdate = { offset, scale -> viewModel.updateViewState(offset, scale) },
-                onSnapToGrid = { viewModel.snapToGrid(it) }
+                onSnapToGrid = { viewModel.snapToGrid(it) },
+                onOpenItemDetail = { viewModel.loadItemDetail(it) }
             )
 
             ConceptToolbar(

@@ -86,9 +86,11 @@ class NoteListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = NoteAdapter(filteredNotes) { note ->
-            showAddEditNoteDialog(note)
-        }
+        adapter = NoteAdapter(
+            filteredNotes,
+            onClick = { note -> showAddEditNoteDialog(note) },
+            onDelete = { note -> showDeleteConfirmationDialog(note.id) }
+        )
         binding.recyclerViewNotes.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewNotes.adapter = adapter
     }
@@ -442,12 +444,14 @@ class NoteListFragment : Fragment() {
 
     inner class NoteAdapter(
         private val list: List<Note>,
-        private val onClick: (Note) -> Unit
+        private val onClick: (Note) -> Unit,
+        private val onDelete: (Note) -> Unit
     ) : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
 
         inner class ViewHolder(v: View) : RecyclerView.ViewHolder(v) {
             val title: TextView = v.findViewById(R.id.text_title)
             val content: TextView = v.findViewById(R.id.text_content)
+            val btnDelete: View = v.findViewById(R.id.btn_delete)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -460,6 +464,7 @@ class NoteListFragment : Fragment() {
             holder.title.text = note.title
             holder.content.text = note.content
             holder.itemView.setOnClickListener { onClick(note) }
+            holder.btnDelete.setOnClickListener { onDelete(note) }
         }
 
         override fun getItemCount() = list.size

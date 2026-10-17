@@ -153,11 +153,38 @@ class SymbolListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = SymbolAdapter(filteredSymbols) { symbol ->
-            showAddEditSymbolDialog(symbol)
-        }
+        adapter = SymbolAdapter(
+            filteredSymbols,
+            onClick = { symbol -> showAddEditSymbolDialog(symbol) },
+            onDelete = { symbol -> showDeleteConfirmationDialog(symbol.id) }
+        )
         binding.recyclerViewSymbols.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewSymbols.adapter = adapter
+    }
+
+    private fun deleteSymbol(symbolId: String) {
+        db.collection("symbols").document(symbolId).delete()
+            .addOnSuccessListener {
+                if (isAdded) {
+                    Toast.makeText(requireContext(), "Deleted", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                if (isAdded) {
+                    Toast.makeText(requireContext(), "Delete failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    private fun showDeleteConfirmationDialog(symbolId: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("シンボルの削除")
+            .setMessage("このシンボルを削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                deleteSymbol(symbolId)
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
     }
 
     private fun setupSearchView() {
@@ -253,7 +280,8 @@ class SymbolListFragment : Fragment() {
 
     inner class SymbolAdapter(
         private val list: List<Symbol>,
-        private val onClick: (Symbol) -> Unit
+        private val onClick: (Symbol) -> Unit,
+        private val onDelete: (Symbol) -> Unit
     ) : RecyclerView.Adapter<SymbolAdapter.ViewHolder>() {
 
         inner class ViewHolder(v: View) : RecyclerView.ViewHolder(v) {
@@ -261,6 +289,7 @@ class SymbolListFragment : Fragment() {
             val content: TextView = v.findViewById(R.id.text_symbol_content)
             val chipLanguage: Chip = v.findViewById(R.id.chip_language)
             val chipGroupTags: ChipGroup = v.findViewById(R.id.chip_group_item_tags)
+            val btnDelete: View = v.findViewById(R.id.btn_delete)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -296,6 +325,7 @@ class SymbolListFragment : Fragment() {
             }
             
             holder.itemView.setOnClickListener { onClick(symbol) }
+            holder.btnDelete.setOnClickListener { onDelete(symbol) }
         }
 
         override fun getItemCount() = list.size

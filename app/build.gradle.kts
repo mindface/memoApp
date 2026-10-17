@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "my.modular"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.play.services.auth)
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     // Compose
     implementation(libs.androidx.activity.compose)

@@ -37,6 +37,13 @@ class LogItemRepository(context: Context) {
         return runCatching { parseMarkdown(file.readText()) }.getOrNull()
     }
 
+    fun delete(id: String) {
+        val file = File(directory, "$id.md")
+        if (file.exists()) {
+            file.delete()
+        }
+    }
+
     fun save(item: LogItem) {
         if (!directory.exists() && !directory.mkdirs()) {
             throw IllegalStateException("ログ保存フォルダを作成できませんでした")
