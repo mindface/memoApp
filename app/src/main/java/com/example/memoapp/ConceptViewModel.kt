@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED }
+enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED, ADD_IMAGE, ADD_URL }
 enum class ConceptModalType { NONE, CLOUD, STYLE, ITEM_PICKER, ITEM_DETAIL }
 
 class ConceptViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
@@ -352,6 +352,57 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             height = if (type == "TEXT") 1f else if (type == "ARROW") 40f else 150f,
             text = text,
             color = _selectedColor.value,
+            zIndex = maxZ + 1
+        )
+        elements.add(newElement)
+        selectElement(newElement)
+        _currentMode.value = ConceptMode.PAN_ZOOM
+    }
+
+    fun addImageElement(uri: String, x: Float, y: Float) {
+        val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
+
+        val snappedX = snapToGrid(x)
+        val snappedY = snapToGrid(y)
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+
+        val newElement = CanvasElement(
+            id = db.collection("canvas_elements").document().id,
+            userId = userId,
+            conceptId = conceptId,
+            type = "IMAGE",
+            x = snappedX,
+            y = snappedY,
+            width = 200f,
+            height = 200f,
+            imageUri = uri,
+            zIndex = maxZ + 1
+        )
+        elements.add(newElement)
+        selectElement(newElement)
+        _currentMode.value = ConceptMode.PAN_ZOOM
+    }
+
+    fun addUrlElement(url: String, x: Float, y: Float) {
+        val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
+
+        val snappedX = snapToGrid(x)
+        val snappedY = snapToGrid(y)
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+
+        val newElement = CanvasElement(
+            id = db.collection("canvas_elements").document().id,
+            userId = userId,
+            conceptId = conceptId,
+            type = "URL",
+            x = snappedX,
+            y = snappedY,
+            width = 220f,
+            height = 80f,
+            text = url,
+            url = url,
             zIndex = maxZ + 1
         )
         elements.add(newElement)

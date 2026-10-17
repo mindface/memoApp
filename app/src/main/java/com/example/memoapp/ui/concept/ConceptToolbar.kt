@@ -18,6 +18,7 @@ fun ConceptToolbar(
     isGridEnabled: Boolean,
     isReFormation: Boolean,
     onModeChange: (ConceptMode) -> Unit,
+    onAddImageClick: () -> Unit,
     onToggleGrid: () -> Unit,
     onSaveLocal: () -> Unit,
     onSaveFirebase: () -> Unit,
@@ -63,6 +64,17 @@ fun ConceptToolbar(
                 contentDescription = "Add Text",
                 isSelected = currentMode == ConceptMode.ADD_TEXT,
                 onClick = { onModeChange(ConceptMode.ADD_TEXT) }
+            )
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_camera,
+                contentDescription = "Add Image",
+                onClick = onAddImageClick
+            )
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_compass,
+                contentDescription = "Add URL",
+                isSelected = currentMode == ConceptMode.ADD_URL,
+                onClick = { onModeChange(ConceptMode.ADD_URL) }
             )
             if (isReFormation) {
                 ToolbarButton(

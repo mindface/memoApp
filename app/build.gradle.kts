@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.play.services.auth)
     implementation("androidx.health.connect:connect-client:1.1.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Compose
     implementation(libs.androidx.activity.compose)
