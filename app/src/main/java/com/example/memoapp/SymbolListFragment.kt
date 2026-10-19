@@ -107,6 +107,17 @@ class SymbolListFragment : Fragment() {
         }
 
         val dialog = builder.setView(dialogView).create()
+        dialog.setOnShowListener {
+            dialog.window?.apply {
+                setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                setBackgroundDrawableResource(android.R.color.white)
+                addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            }
+        }
+
         btnCancel.setOnClickListener { dialog.dismiss() }
         btnSave.setOnClickListener {
             val selectedChipId = chipGroup.checkedChipId
@@ -184,6 +195,8 @@ class SymbolListFragment : Fragment() {
                 deleteSymbol(symbolId)
             }
             .setNegativeButton("キャンセル", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 

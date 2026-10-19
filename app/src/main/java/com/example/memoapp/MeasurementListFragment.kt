@@ -76,6 +76,8 @@ class MeasurementListFragment : Fragment() {
                 }
             }
             .setNegativeButton("Cancel", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 
@@ -87,6 +89,8 @@ class MeasurementListFragment : Fragment() {
                 viewModel.deleteMeasurementPage(pageId)
             }
             .setNegativeButton("キャンセル", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 }
