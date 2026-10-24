@@ -17,6 +17,9 @@ import com.example.memoapp.model.CanvasElement
 fun ConceptScreen(
     viewModel: ConceptViewModel,
     onShowTextDialog: (Float, Float) -> Unit,
+    onShowUrlDialog: (Float, Float) -> Unit,
+    onShowImagePicker: (Float, Float) -> Unit,
+    onDirectAddImage: () -> Unit,
     onShowColorPicker: () -> Unit,
     onEditSelectedText: (CanvasElement) -> Unit,
     onNavigateToItem: (itemType: String, itemId: String) -> Unit
@@ -104,6 +107,8 @@ fun ConceptScreen(
                             viewModel.setInsertionPoint(x, y)
                             viewModel.setActiveModal(com.example.memoapp.ConceptModalType.ITEM_PICKER)
                         }
+                        ConceptMode.ADD_IMAGE -> onShowImagePicker(x, y)
+                        ConceptMode.ADD_URL -> onShowUrlDialog(x, y)
                         ConceptMode.PAN_ZOOM -> {}
                     }
                 },
@@ -118,6 +123,7 @@ fun ConceptScreen(
                 isGridEnabled = isGridEnabled,
                 isReFormation = isReFormation,
                 onModeChange = { viewModel.setMode(it) },
+                onAddImageClick = onDirectAddImage,
                 onToggleGrid = { viewModel.toggleGrid() },
                 onSaveLocal = { viewModel.saveLocalOnly(context) },
                 onSaveFirebase = { viewModel.saveToFirebase(context) },

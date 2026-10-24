@@ -114,6 +114,18 @@ class NoteEditorDialogFragment : DialogFragment() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // ダイアログのウィンドウを常に全画面（MATCH_PARENT）に設定
+        dialog?.window?.apply {
+            setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundDrawableResource(android.R.color.white)
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

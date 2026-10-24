@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -53,6 +54,8 @@ fun ConceptCanvas(
     val currentOnSnapToGrid by rememberUpdatedState(onSnapToGrid)
     val currentOnOpenItemDetail by rememberUpdatedState(onOpenItemDetail)
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     var scale by remember { mutableFloatStateOf(viewScale) }
     var offset by remember { mutableStateOf(viewOffset) }
 
@@ -78,8 +81,8 @@ fun ConceptCanvas(
         var h = el.height
         
         if (el.linkedItemId != null) {
-            w = 50f + resizeDelta.x.coerceAtLeast(-20f)
-            h = 50f + resizeDelta.y.coerceAtLeast(-20f)
+            w = (200f + resizeDelta.x).coerceAtLeast(100f)
+            h = (60f + resizeDelta.y).coerceAtLeast(40f)
         } else if (el.type == "TEXT") {
             val fontSize = (el.fontSize + resizeDelta.y).coerceAtLeast(10f)
             val layout = textMeasurer.measure(
@@ -101,8 +104,8 @@ fun ConceptCanvas(
     // Auto-update newly added elements
     LaunchedEffect(currentElements) {
         currentElements.forEach { element ->
-            if (element.linkedItemId != null && element.width != 50f) {
-                currentOnElementUpdate(element.copy(width = 50f, height = 50f))
+            if (element.linkedItemId != null && element.width != 200f) {
+                currentOnElementUpdate(element.copy(width = 200f, height = 60f))
             } else if (element.type == "TEXT" && element.width <= 1f && element.text.isNotEmpty()) {
                 val bounds = getElementBounds(element)
                 currentOnElementUpdate(element.copy(width = bounds.width, height = bounds.height))
@@ -242,6 +245,12 @@ fun ConceptCanvas(
                             if (bodyHit.linkedItemId != null) {
                                 currentOnOpenItemDetail(bodyHit)
                             }
+                            if (bodyHit.type == "URL" && bodyHit.url != null) {
+                                try {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(bodyHit.url))
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            }
                         } else {
                             // Clicked on empty space
                             currentOnSelectElement(null)
@@ -291,33 +300,38 @@ fun ConceptCanvas(
                         "RECTANGLE" -> {
                             val isLinked = element.linkedItemId != null
                             if (isLinked) {
-                                val radius = renderW / 2
-                                val badgeCenter = Offset(renderX + radius, renderY + radius)
-                                drawCircle(
-                                    color = Color.White,
-                                    radius = radius,
-                                    center = badgeCenter
-                                )
-                                drawCircle(
-                                    color = Color(0xFF4285F4),
-                                    radius = radius,
-                                    center = badgeCenter,
-                                    style = Stroke(width = 3f / safeScale)
-                                )
                                 val indexNum = elements.indexOf(element) + 1
+                                val displayTitle = "[$indexNum] ${element.text.ifEmpty { "Linked Item" }}"
+
+                                drawRect(
+                                    color = Color.White,
+                                    topLeft = Offset(renderX, renderY),
+                                    size = Size(renderW, renderH)
+                                )
+                                drawRect(
+                                    color = Color(0xFF4285F4),
+                                    topLeft = Offset(renderX, renderY),
+                                    size = Size(renderW, renderH),
+                                    style = Stroke(width = 2f / safeScale)
+                                )
+
+                                val maxW = (renderW - 16f).coerceAtLeast(10f).toInt()
                                 val layout = textMeasurer.measure(
-                                    text = "$indexNum",
+                                    text = displayTitle,
                                     style = androidx.compose.ui.text.TextStyle(
                                         color = Color.Black,
-                                        fontSize = 16.sp,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                    )
+                                        fontSize = 14.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                    ),
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = maxW)
                                 )
                                 drawText(
                                     textLayoutResult = layout,
                                     topLeft = Offset(
-                                        badgeCenter.x - layout.size.width / 2f,
-                                        badgeCenter.y - layout.size.height / 2f
+                                        renderX + 8f,
+                                        renderY + (renderH - layout.size.height) / 2f
                                     )
                                 )
                             } else {
@@ -401,6 +415,58 @@ fun ConceptCanvas(
                                 textLayoutResult = layout,
                                 topLeft = Offset(renderX, renderY)
                             )
+                        }
+                        "URL" -> {
+                            drawRect(
+                                color = Color.White,
+                                topLeft = Offset(renderX, renderY),
+                                size = Size(renderW, renderH)
+                            )
+                            drawRect(
+                                color = Color(0xFF4285F4),
+                                topLeft = Offset(renderX, renderY),
+                                size = Size(renderW, renderH),
+                                style = Stroke(width = 2f / safeScale)
+                            )
+                            val layout = textMeasurer.measure(
+                                text = "🌐 ${element.url ?: element.text}",
+                                style = androidx.compose.ui.text.TextStyle(
+                                    color = Color.Blue,
+                                    fontSize = 16.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                ),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                constraints = androidx.compose.ui.unit.Constraints(maxWidth = (renderW - 16f).toInt().coerceAtLeast(10))
+                            )
+                            drawText(
+                                textLayoutResult = layout,
+                                topLeft = Offset(
+                                    renderX + 8f,
+                                    renderY + (renderH - layout.size.height) / 2f
+                                )
+                            )
+                        }
+                        "IMAGE" -> {
+                            if (element.imageUri != null) {
+                                try {
+                                    val uri = android.net.Uri.parse(element.imageUri)
+                                    val inputStream = context.contentResolver.openInputStream(uri)
+                                    val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                                    inputStream?.close()
+                                    if (bitmap != null) {
+                                        drawImage(
+                                            image = bitmap.asImageBitmap(),
+                                            dstOffset = androidx.compose.ui.unit.IntOffset(renderX.roundToInt(), renderY.roundToInt()),
+                                            dstSize = androidx.compose.ui.unit.IntSize(renderW.roundToInt(), renderH.roundToInt())
+                                        )
+                                    }
+                                } catch (_: Exception) {
+                                    drawRect(Color.LightGray, topLeft = Offset(renderX, renderY), size = Size(renderW, renderH))
+                                }
+                            } else {
+                                drawRect(Color.LightGray, topLeft = Offset(renderX, renderY), size = Size(renderW, renderH))
+                            }
                         }
                     }
                 }

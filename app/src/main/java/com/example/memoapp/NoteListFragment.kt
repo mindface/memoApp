@@ -439,6 +439,8 @@ class NoteListFragment : Fragment() {
                 deleteNote(noteId)
             }
             .setNegativeButton("キャンセル", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 

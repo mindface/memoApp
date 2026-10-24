@@ -71,43 +71,57 @@
             android:textStyle="bold" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- 3. 本文エリア (スクロール可能) -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/scroll_log_item_content"
+    <!-- 3. 本文エリア (スクロール可能) と右側ミニマップ -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
+        android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/layout_log_item_title">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/scroll_log_item_content"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:fillViewport="true">
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layout_log_item_content"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:hintEnabled="false">
+                android:orientation="vertical"
+                android:padding="16dp">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/edit_log_item_content"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_log_item_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="top|start"
-                    android:background="@android:color/transparent"
-                    android:hint="本文（Markdown）を入力..."
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:minLines="20"
-                    android:textSize="16sp" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    app:hintEnabled="false">
 
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_log_item_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="top|start"
+                        android:background="@android:color/transparent"
+                        android:hint="本文（Markdown）を入力..."
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:minLines="20"
+                        android:textSize="16sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/compose_view_minimap"
+            android:layout_width="36dp"
+            android:layout_height="match_parent"
+            android:layout_marginVertical="16dp"
+            android:layout_marginEnd="8dp" />
+    </LinearLayout>
 
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/compose_view_modal"

@@ -21,6 +21,17 @@ class ConceptFragment : Fragment() {
 
     private val viewModel: ConceptViewModel by viewModels()
 
+    private var pendingImageCoords: Pair<Float, Float>? = null
+    private val imagePickerLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            pendingImageCoords?.let { (x, y) ->
+                viewModel.addImageElement(it.toString(), x, y)
+            }
+        }
+        pendingImageCoords = null
+        viewModel.setMode(ConceptMode.PAN_ZOOM)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -32,6 +43,15 @@ class ConceptFragment : Fragment() {
                     ConceptScreen(
                         viewModel = viewModel,
                         onShowTextDialog = { x, y -> showTextInputDialog(x, y) },
+                        onShowUrlDialog = { x, y -> showUrlInputDialog(x, y) },
+                        onShowImagePicker = { x, y ->
+                            pendingImageCoords = x to y
+                            imagePickerLauncher.launch("image/*")
+                        },
+                        onDirectAddImage = {
+                            pendingImageCoords = 100f to 100f
+                            imagePickerLauncher.launch("image/*")
+                        },
                         onShowColorPicker = { showColorPickerDialog() },
                         onEditSelectedText = { element -> showEditTextViewDialog(element) },
                         onNavigateToItem = { type, id ->
@@ -164,6 +184,24 @@ class ConceptFragment : Fragment() {
                 val text = editText.text.toString()
                 if (text.isNotEmpty()) {
                     viewModel.addElement("TEXT", x, y, text)
+                }
+                viewModel.setMode(ConceptMode.PAN_ZOOM)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showUrlInputDialog(x: Float, y: Float) {
+        val editText = EditText(requireContext()).apply {
+            hint = "https://example.com"
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Enter URL")
+            .setView(editText)
+            .setPositiveButton("OK") { _, _ ->
+                val url = editText.text.toString()
+                if (url.isNotEmpty()) {
+                    viewModel.addUrlElement(url, x, y)
                 }
                 viewModel.setMode(ConceptMode.PAN_ZOOM)
             }
