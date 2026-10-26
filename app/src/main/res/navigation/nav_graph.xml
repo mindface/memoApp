@@ -52,7 +52,23 @@
         android:id="@+id/NoteListFragment"
         android:name="com.example.memoapp.NoteListFragment"
         android:label="Notes"
-        tools:layout="@layout/fragment_note_list" />
+        tools:layout="@layout/fragment_note_list">
+        <action
+            android:id="@+id/action_NoteListFragment_to_NoteFragment"
+            app:destination="@id/NoteFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/NoteFragment"
+        android:name="com.example.memoapp.NoteFragment"
+        android:label="Note Detail"
+        tools:layout="@layout/fragment_note_edit">
+        <argument
+            android:name="noteId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
 
     <fragment
         android:id="@+id/LogItemListFragment"

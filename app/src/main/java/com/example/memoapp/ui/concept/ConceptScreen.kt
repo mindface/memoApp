@@ -184,6 +184,7 @@ fun ConceptScreen(
                                 onShowColorPicker()
                             },
                             onUpdateDrawStyle = { viewModel.setElementDrawStyle(it) },
+                            onToggleLock = { viewModel.toggleLock() },
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
                     }

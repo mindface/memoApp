@@ -126,8 +126,8 @@ fun ConceptCanvas(
                     val sel = currentSelectedElement
                     val bounds = sel?.let { getElementBounds(it) }
                     
-                    val rotationHandleHit = sel != null && bounds != null && isOnRotationHandle(sel, cx, cy, bounds)
-                    val resizeHandleHit = sel != null && bounds != null && isOnHandle(sel, cx, cy, bounds)
+                    val rotationHandleHit = sel != null && !sel.isLocked && bounds != null && isOnRotationHandle(sel, cx, cy, bounds)
+                    val resizeHandleHit = sel != null && !sel.isLocked && bounds != null && isOnHandle(sel, cx, cy, bounds)
                     
                     val bodyHit = currentElements.findLast { el ->
                         contains(el, cx, cy, getElementBounds(el))
@@ -146,8 +146,12 @@ fun ConceptCanvas(
                         activeElementId = sel?.id
                         isResizing = true
                     } else if (bodyHit != null) {
-                        activeElementId = bodyHit.id
                         currentOnSelectElement(bodyHit)
+                        if (!bodyHit.isLocked) {
+                            activeElementId = bodyHit.id
+                        } else {
+                            activeElementId = null
+                        }
                     } else {
                         activeElementId = null
                         isDraggingCanvas = true
@@ -503,6 +507,27 @@ fun ConceptCanvas(
                     drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 6f/safeScale), Offset(lx + 20f/safeScale, ly + 6f/safeScale), 2f/safeScale)
                     drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 12f/safeScale), Offset(lx + 20f/safeScale, ly + 12f/safeScale), 2f/safeScale)
                     drawLine(Color.Gray, Offset(lx + 4f/safeScale, ly + 18f/safeScale), Offset(lx + 12f/safeScale, ly + 18f/safeScale), 2f/safeScale)
+                }
+
+                // ロック中インジケーター（鍵アイコン）
+                if (element.isLocked) {
+                    val lockIconSize = 24f / safeScale
+                    val lx = renderX + renderW - lockIconSize - 4f / safeScale
+                    val ly = renderY + 4f / safeScale
+                    
+                    drawRect(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        topLeft = Offset(lx, ly),
+                        size = Size(lockIconSize, lockIconSize)
+                    )
+                    val layout = textMeasurer.measure(
+                        text = "🔒",
+                        style = androidx.compose.ui.text.TextStyle(fontSize = (14f / safeScale).sp)
+                    )
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(lx + 2f / safeScale, ly + 2f / safeScale)
+                    )
                 }
                 
                 if (element == selectedElement) {

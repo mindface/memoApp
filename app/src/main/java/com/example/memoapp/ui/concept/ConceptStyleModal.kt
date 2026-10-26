@@ -31,6 +31,7 @@ fun ConceptStyleModal(
     onUpdateStrokeColor: (Int) -> Unit,
     onPickStrokeColor: () -> Unit,
     onUpdateDrawStyle: (Int) -> Unit,
+    onToggleLock: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -44,10 +45,30 @@ fun ConceptStyleModal(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "オブジェクトの見た目",
+                text = "オブジェクトの見た目と保護",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(16.dp)
             )
+
+            // 0. Lock / Unlock Protection Section
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "オブジェクトの固定（ロック）",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Switch(
+                        checked = selectedElement.isLocked,
+                        onCheckedChange = { onToggleLock() }
+                    )
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // 1. Draw Style Section (Shapes only)
             if (selectedElement.type == "RECTANGLE" || selectedElement.type == "CIRCLE") {

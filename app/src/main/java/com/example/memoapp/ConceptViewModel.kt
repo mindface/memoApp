@@ -420,6 +420,16 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         }
     }
 
+    fun toggleLock() {
+        val sel = _selectedElement.value ?: return
+        val updated = sel.copy(isLocked = !sel.isLocked)
+        updateElement(updated)
+        if (updated.id.isNotEmpty()) {
+            db.collection("canvas_elements").document(updated.id).set(updated)
+        }
+        saveCanvasElements(getApplication())
+    }
+
     fun deleteSelectedElement() {
         _selectedElement.value?.let { element ->
             val idToDelete = element.id

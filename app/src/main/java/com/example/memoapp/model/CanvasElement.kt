@@ -64,6 +64,9 @@ data class CanvasElement(
     @get:PropertyName("url") @set:PropertyName("url")
     var url: String? = null,
 
+    @get:PropertyName("is_locked") @set:PropertyName("is_locked")
+    var isLocked: Boolean = false,
+
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable
