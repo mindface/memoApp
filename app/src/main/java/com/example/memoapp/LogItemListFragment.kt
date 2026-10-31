@@ -72,6 +72,8 @@ class LogItemListFragment : Fragment() {
                 loadItems()
             }
             .setNegativeButton("キャンセル", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 

@@ -76,6 +76,8 @@ class ReFormationListFragment : Fragment() {
                 }
             }
             .setNegativeButton("Cancel", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 
@@ -87,6 +89,8 @@ class ReFormationListFragment : Fragment() {
                 viewModel.deleteReFormation(reformationId)
             }
             .setNegativeButton("キャンセル", null)
+            .create()
+            .apply { makeFullScreen() }
             .show()
     }
 }

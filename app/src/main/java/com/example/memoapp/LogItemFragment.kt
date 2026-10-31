@@ -11,9 +11,20 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.memoapp.databinding.FragmentLogItemBinding
@@ -35,6 +46,7 @@ class LogItemFragment : Fragment() {
 
     private var showModal by mutableStateOf(false)
     private var isSharedState by mutableStateOf(false)
+    private var editorContentText by mutableStateOf("")
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -55,15 +67,45 @@ class LogItemFragment : Fragment() {
             existingItem?.let {
                 binding.editLogItemTitle.setText(it.title)
                 binding.editLogItemContent.setText(it.content)
+                editorContentText = it.content
                 isSharedState = it.isShared
             }
         }
+
+        binding.editLogItemContent.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                editorContentText = s?.toString() ?: ""
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        setupMinimap()
 
         binding.buttonSaveLogItem.setOnClickListener { saveLogItem() }
         binding.buttonCancelLogItem.setOnClickListener { findNavController().navigateUp() }
         binding.buttonLogItemInfo.setOnClickListener { showModal = true }
 
         setupModal()
+    }
+
+    private fun setupMinimap() {
+        binding.composeViewMinimap.setContent {
+            val lines = remember(editorContentText) { editorContentText.lines() }
+            com.example.memoapp.ui.components.ScrollbarWithJumpModal(
+                lines = lines,
+                onJumpToLine = { index ->
+                    if (lines.isNotEmpty()) {
+                        val ratio = index.toFloat() / lines.size.coerceAtLeast(1)
+                        val child = binding.scrollLogItemContent.getChildAt(0)
+                        val maxScroll = if (child != null) child.height - binding.scrollLogItemContent.height else 0
+                        val targetScroll = (maxScroll * ratio).toInt().coerceAtLeast(0)
+                        binding.scrollLogItemContent.smoothScrollTo(0, targetScroll)
+                    }
+                },
+                modifier = Modifier.fillMaxHeight()
+            )
+        }
     }
 
     private fun setupModal() {
@@ -117,13 +159,11 @@ class LogItemFragment : Fragment() {
         }
         requireContext().startService(intent)
         showModal = false
-        // Optionally navigate up if we want to "leave" the app but keep the note
-        // findNavController().navigateUp()
     }
 
     private fun syncLogItemToCloud(shared: Boolean) {
         FirebaseAuth.getInstance().currentUser ?: return
-        val item = existingItem ?: return // Only sync existing items for now, or save first
+        val item = existingItem ?: return
         
         val db = Firebase.firestore
         if (shared) {
@@ -131,7 +171,6 @@ class LogItemFragment : Fragment() {
                 item.copy(isShared = true, updatedAt = System.currentTimeMillis().toString())
             ).addOnSuccessListener {
                 Toast.makeText(context, "クラウドに同期しました", Toast.LENGTH_SHORT).show()
-                // Update local status too
                 repository.save(item.copy(isShared = true))
             }
         } else {
@@ -182,7 +221,6 @@ class LogItemFragment : Fragment() {
         scaleGestureDetector = ScaleGestureDetector(requireContext(), object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
                 currentTextSize *= detector.scaleFactor
-                // 文字サイズを 10sp 〜 50sp の範囲に制限
                 currentTextSize = currentTextSize.coerceIn(10f, 50f)
                 binding.editLogItemContent.textSize = currentTextSize
                 return true
@@ -190,13 +228,12 @@ class LogItemFragment : Fragment() {
         })
 
         binding.editLogItemContent.setOnTouchListener { v: View, event: MotionEvent ->
-            // ピンチ操作（指2本以上）の場合はジェスチャー検出器に渡す
             if (event.pointerCount >= 2) {
                 scaleGestureDetector.onTouchEvent(event)
-                true // イベントを消費してスクロールを防ぐ
+                true
             } else {
                 v.performClick()
-                false // 通常のタッチ（スクロール等）はシステムに任せる
+                false
             }
         }
     }

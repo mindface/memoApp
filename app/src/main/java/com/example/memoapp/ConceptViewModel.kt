@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED }
+enum class ConceptMode { PAN_ZOOM, ADD_RECT, ADD_CIRCLE, ADD_TEXT, ADD_ARROW, ADD_LINKED, ADD_IMAGE, ADD_URL }
 enum class ConceptModalType { NONE, CLOUD, STYLE, ITEM_PICKER, ITEM_DETAIL }
 
 class ConceptViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
@@ -60,6 +60,9 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _selectedElement = MutableStateFlow<CanvasElement?>(null)
     val selectedElement: StateFlow<CanvasElement?> = _selectedElement.asStateFlow()
 
+    private val _conceptTitle = MutableStateFlow<String>("")
+    val conceptTitle: StateFlow<String> = _conceptTitle.asStateFlow()
+
     private val _canPaste = MutableStateFlow(false)
     val canPaste: StateFlow<Boolean> = _canPaste.asStateFlow()
 
@@ -82,6 +85,13 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     private val _isGridEnabled = MutableStateFlow(true)
     val isGridEnabled: StateFlow<Boolean> = _isGridEnabled.asStateFlow()
+
+    private val _isUiVisible = MutableStateFlow(true)
+    val isUiVisible: StateFlow<Boolean> = _isUiVisible.asStateFlow()
+
+    fun toggleUiVisible() {
+        _isUiVisible.value = !_isUiVisible.value
+    }
 
     private val _isLocalOnly = MutableStateFlow(false)
     val isLocalOnly: StateFlow<Boolean> = _isLocalOnly.asStateFlow()
@@ -119,9 +129,29 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             fetchCanvasElements()
             fetchAvailableSymbols(currentUser.uid)
             fetchAvailableNotes(currentUser.uid)
-            fetchAvailableConcepts(currentUser.uid)
             fetchAvailableLogItems()
+            fetchAvailableConcepts(currentUser.uid)
+
+            val collectionName = if (isReFormation) "reformations" else "concepts"
+            if (conceptId.isNotEmpty()) {
+                db.collection(collectionName).document(conceptId).addSnapshotListener { doc, _ ->
+                    if (doc != null && doc.exists()) {
+                        _conceptTitle.value = doc.getString("title") ?: ""
+                    }
+                }
+            }
         }
+    }
+
+    fun updateConceptTitle(newTitle: String) {
+        val trimmed = newTitle.trim()
+        if (trimmed.isEmpty() || conceptId.isEmpty()) return
+        val collectionName = if (isReFormation) "reformations" else "concepts"
+        db.collection(collectionName).document(conceptId)
+            .update("title", trimmed, "updatedAt", System.currentTimeMillis())
+            .addOnSuccessListener {
+                _conceptTitle.value = trimmed
+            }
     }
 
     fun setActiveModal(type: ConceptModalType) {
@@ -359,6 +389,57 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         _currentMode.value = ConceptMode.PAN_ZOOM
     }
 
+    fun addImageElement(uri: String, x: Float, y: Float) {
+        val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
+
+        val snappedX = snapToGrid(x)
+        val snappedY = snapToGrid(y)
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+
+        val newElement = CanvasElement(
+            id = db.collection("canvas_elements").document().id,
+            userId = userId,
+            conceptId = conceptId,
+            type = "IMAGE",
+            x = snappedX,
+            y = snappedY,
+            width = 200f,
+            height = 200f,
+            imageUri = uri,
+            zIndex = maxZ + 1
+        )
+        elements.add(newElement)
+        selectElement(newElement)
+        _currentMode.value = ConceptMode.PAN_ZOOM
+    }
+
+    fun addUrlElement(url: String, x: Float, y: Float) {
+        val userId = auth.currentUser?.uid ?: return
+        if (conceptId.isEmpty()) return
+
+        val snappedX = snapToGrid(x)
+        val snappedY = snapToGrid(y)
+        val maxZ = elements.maxOfOrNull { it.zIndex } ?: 0
+
+        val newElement = CanvasElement(
+            id = db.collection("canvas_elements").document().id,
+            userId = userId,
+            conceptId = conceptId,
+            type = "URL",
+            x = snappedX,
+            y = snappedY,
+            width = 220f,
+            height = 80f,
+            text = url,
+            url = url,
+            zIndex = maxZ + 1
+        )
+        elements.add(newElement)
+        selectElement(newElement)
+        _currentMode.value = ConceptMode.PAN_ZOOM
+    }
+
     fun updateElement(element: CanvasElement) {
         val index = elements.indexOfFirst { it.id == element.id }
         if (index != -1) {
@@ -367,6 +448,16 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         if (_selectedElement.value?.id == element.id) {
             _selectedElement.value = element
         }
+    }
+
+    fun toggleLock() {
+        val sel = _selectedElement.value ?: return
+        val updated = sel.copy(isLocked = !sel.isLocked)
+        updateElement(updated)
+        if (updated.id.isNotEmpty()) {
+            db.collection("canvas_elements").document(updated.id).set(updated)
+        }
+        saveCanvasElements(getApplication())
     }
 
     fun deleteSelectedElement() {

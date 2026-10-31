@@ -58,6 +58,15 @@ data class CanvasElement(
     @get:PropertyName("linked_item_type") @set:PropertyName("linked_item_type")
     var linkedItemType: String? = null, // NOTE, LOG_ITEM, CONCEPT
 
+    @get:PropertyName("image_uri") @set:PropertyName("image_uri")
+    var imageUri: String? = null,
+
+    @get:PropertyName("url") @set:PropertyName("url")
+    var url: String? = null,
+
+    @get:PropertyName("is_locked") @set:PropertyName("is_locked")
+    var isLocked: Boolean = false,
+
     @get:PropertyName("created_at") @set:PropertyName("created_at")
     var createdAt: Long = System.currentTimeMillis()
 ) : Serializable

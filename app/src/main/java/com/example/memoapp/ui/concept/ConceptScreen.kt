@@ -17,9 +17,16 @@ import com.example.memoapp.model.CanvasElement
 fun ConceptScreen(
     viewModel: ConceptViewModel,
     onShowTextDialog: (Float, Float) -> Unit,
+    onShowUrlDialog: (Float, Float) -> Unit,
+    onShowImagePicker: (Float, Float) -> Unit,
+    onDirectAddImage: () -> Unit,
     onShowColorPicker: () -> Unit,
     onEditSelectedText: (CanvasElement) -> Unit,
-    onNavigateToItem: (itemType: String, itemId: String) -> Unit
+    onNavigateToItem: (itemType: String, itemId: String) -> Unit,
+    onRegisterEditTitleAction: (() -> Unit) -> Unit,
+    onRegisterCloudSettingsAction: (() -> Unit) -> Unit,
+    onRegisterStyleSettingsAction: (() -> Unit) -> Unit,
+    onRegisterExportImageAction: (() -> Unit) -> Unit
 ) {
     val elements = viewModel.elements
     val mode by viewModel.currentMode.collectAsStateWithLifecycle()
@@ -28,6 +35,7 @@ fun ConceptScreen(
     val viewOffset by viewModel.viewOffset.collectAsStateWithLifecycle()
     val viewScale by viewModel.viewScale.collectAsStateWithLifecycle()
     val isGridEnabled by viewModel.isGridEnabled.collectAsStateWithLifecycle()
+    val isUiVisible by viewModel.isUiVisible.collectAsStateWithLifecycle()
     val isLocalOnly by viewModel.isLocalOnly.collectAsStateWithLifecycle()
     val activeModal by viewModel.activeModal.collectAsStateWithLifecycle()
     val availableSymbols by viewModel.availableSymbols.collectAsStateWithLifecycle()
@@ -54,30 +62,85 @@ fun ConceptScreen(
         }
     }
 
+    val conceptTitle by viewModel.conceptTitle.collectAsStateWithLifecycle()
+    var showEditTitleDialog by remember { mutableStateOf(false) }
+    var editTitleText by remember { mutableStateOf(conceptTitle) }
+
+    LaunchedEffect(conceptTitle) {
+        editTitleText = conceptTitle
+    }
+
+    if (showEditTitleDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditTitleDialog = false },
+            title = { Text("プロジェクトタイトルの編集") },
+            text = {
+                OutlinedTextField(
+                    value = editTitleText,
+                    onValueChange = { editTitleText = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (editTitleText.isNotBlank()) {
+                        viewModel.updateConceptTitle(editTitleText)
+                    }
+                    showEditTitleDialog = false
+                }) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditTitleDialog = false }) {
+                    Text("キャンセル")
+                }
+            }
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        onRegisterEditTitleAction { showEditTitleDialog = true }
+        onRegisterCloudSettingsAction { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.CLOUD) }
+        onRegisterStyleSettingsAction { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.STYLE) }
+        onRegisterExportImageAction { viewModel.exportCanvasAsImage(context) }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        topBar = {
+            if (isUiVisible) {
+                TopAppBar(
+                    title = { Text("") }
+                )
+            }
+        },
         bottomBar = {
-            ConceptBottomBar(
-                selectedElement = selectedElement,
-                canPaste = canPaste,
-                onDelete = { viewModel.deleteSelectedElement() },
-                onCopy = { viewModel.copySelectedElement() },
-                onPaste = { viewModel.pasteElement() },
-                onShowCloudSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.CLOUD) },
-                onShowStyleSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.STYLE) },
-                onShowItemDetail = { viewModel.loadItemDetail(it) },
-                onOpenLinkedItem = { el ->
-                    el.linkedItemId?.let { id ->
-                        el.linkedItemType?.let { type ->
-                            onNavigateToItem(type, id)
+            if (isUiVisible) {
+                ConceptBottomBar(
+                    selectedElement = selectedElement,
+                    canPaste = canPaste,
+                    onDelete = { viewModel.deleteSelectedElement() },
+                    onCopy = { viewModel.copySelectedElement() },
+                    onPaste = { viewModel.pasteElement() },
+                    onShowCloudSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.CLOUD) },
+                    onShowStyleSettings = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.STYLE) },
+                    onShowItemDetail = { viewModel.loadItemDetail(it) },
+                    onOpenLinkedItem = { el ->
+                        el.linkedItemId?.let { id ->
+                            el.linkedItemType?.let { type ->
+                                onNavigateToItem(type, id)
+                            }
                         }
-                    }
-                },
-                onSendToBack = { viewModel.sendSelectedToBack() },
-                onBringToFront = { viewModel.bringSelectedToFront() },
-                onEditSelected = { selectedElement?.let { onEditSelectedText(it) } },
-                onChangeFontSize = { viewModel.changeFontSize(it) }
-            )
+                    },
+                    onSendToBack = { viewModel.sendSelectedToBack() },
+                    onBringToFront = { viewModel.bringSelectedToFront() },
+                    onEditSelected = { selectedElement?.let { onEditSelectedText(it) } },
+                    onChangeFontSize = { viewModel.changeFontSize(it) }
+                )
+            }
         }
     ) { innerPadding ->
         Box(
@@ -86,7 +149,6 @@ fun ConceptScreen(
                 .padding(innerPadding)
                 .background(Color(0xFFF5F5F5))
         ) {
-            // ... (ConceptCanvas and ConceptToolbar)
             ConceptCanvas(
                 elements = elements,
                 selectedElement = selectedElement,
@@ -104,6 +166,8 @@ fun ConceptScreen(
                             viewModel.setInsertionPoint(x, y)
                             viewModel.setActiveModal(com.example.memoapp.ConceptModalType.ITEM_PICKER)
                         }
+                        ConceptMode.ADD_IMAGE -> onShowImagePicker(x, y)
+                        ConceptMode.ADD_URL -> onShowUrlDialog(x, y)
                         ConceptMode.PAN_ZOOM -> {}
                     }
                 },
@@ -113,42 +177,65 @@ fun ConceptScreen(
                 onOpenItemDetail = { viewModel.loadItemDetail(it) }
             )
 
-            ConceptToolbar(
-                currentMode = mode,
-                isGridEnabled = isGridEnabled,
-                isReFormation = isReFormation,
-                onModeChange = { viewModel.setMode(it) },
-                onToggleGrid = { viewModel.toggleGrid() },
-                onSaveLocal = { viewModel.saveLocalOnly(context) },
-                onSaveFirebase = { viewModel.saveToFirebase(context) },
-                onExportImage = { viewModel.exportCanvasAsImage(context) },
-                modifier = Modifier.align(Alignment.TopStart)
-            )
+            if (isUiVisible) {
+                ConceptToolbar(
+                    currentMode = mode,
+                    isGridEnabled = isGridEnabled,
+                    isReFormation = isReFormation,
+                    onModeChange = { viewModel.setMode(it) },
+                    onAddImageClick = onDirectAddImage,
+                    onToggleGrid = { viewModel.toggleGrid() },
+                    onSaveLocal = { viewModel.saveLocalOnly(context) },
+                    onSaveFirebase = { viewModel.saveToFirebase(context) },
+                    onExportImage = { viewModel.exportCanvasAsImage(context) },
+                    modifier = Modifier.align(Alignment.TopStart)
+                )
 
-            Text(
-                text = "Mode: ${mode.name}",
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp)
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .padding(4.dp),
-                color = Color.White
-            )
+                Text(
+                    text = "Mode: ${mode.name}",
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(4.dp),
+                    color = Color.White
+                )
+            } else {
+                FloatingActionButton(
+                    onClick = { viewModel.toggleUiVisible() },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                ) {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = android.R.drawable.ic_menu_view),
+                        contentDescription = "Show UI"
+                    )
+                }
+            }
 
             when (activeModal) {
                 com.example.memoapp.ConceptModalType.CLOUD -> {
-                    if (selectedElement != null) {
+                    val targetEl = selectedElement ?: elements.firstOrNull() ?: run {
+                        viewModel.addElement("RECTANGLE", 100f, 100f, "Project Item")
+                        elements.firstOrNull()
+                    }
+                    if (targetEl != null) {
                         ConceptCloudModal(
-                            selectedElement = selectedElement!!,
+                            selectedElement = targetEl,
                             onToggleShare = { viewModel.toggleElementSharing() },
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
                     }
                 }
                 com.example.memoapp.ConceptModalType.STYLE -> {
-                    if (selectedElement != null) {
+                    val targetEl = selectedElement ?: elements.firstOrNull() ?: run {
+                        viewModel.addElement("RECTANGLE", 100f, 100f, "Project Item")
+                        elements.firstOrNull()
+                    }
+                    if (targetEl != null) {
                         ConceptStyleModal(
-                            selectedElement = selectedElement!!,
+                            selectedElement = targetEl,
                             availableSymbols = availableSymbols,
                             quickColors = quickColors,
                             onInsertSymbol = { viewModel.insertSymbolText(it) },
@@ -178,6 +265,7 @@ fun ConceptScreen(
                                 onShowColorPicker()
                             },
                             onUpdateDrawStyle = { viewModel.setElementDrawStyle(it) },
+                            onToggleLock = { viewModel.toggleLock() },
                             onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                         )
                     }
@@ -193,29 +281,8 @@ fun ConceptScreen(
                         onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
                     )
                 }
-                com.example.memoapp.ConceptModalType.ITEM_DETAIL -> {
-                    if (selectedElement != null) {
-                        selectedItemDetail?.let { (title, content) ->
-                            ConceptLinkedItemDetailModal(
-                                title = title,
-                                content = content,
-                                onOpenFullEditor = {
-                                    // Navigate to full editor
-                                    selectedElement?.let { el ->
-                                        el.linkedItemId?.let { id ->
-                                            el.linkedItemType?.let { type ->
-                                                onNavigateToItem(type, id)
-                                            }
-                                        }
-                                    }
-                                    viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE)
-                                },
-                                onDismiss = { viewModel.setActiveModal(com.example.memoapp.ConceptModalType.NONE) }
-                            )
-                        }
-                    }
-                }
-                else -> {}
+                com.example.memoapp.ConceptModalType.ITEM_DETAIL -> {}
+                com.example.memoapp.ConceptModalType.NONE -> {}
             }
         }
     }

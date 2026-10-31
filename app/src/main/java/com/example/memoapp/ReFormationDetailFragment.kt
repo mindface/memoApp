@@ -2,6 +2,9 @@ package com.example.memoapp
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -26,6 +29,58 @@ import com.example.memoapp.model.CanvasElement
 class ReFormationDetailFragment : Fragment() {
 
     private val viewModel: ConceptViewModel by viewModels()
+
+    private var pendingImageCoords: Pair<Float, Float>? = null
+    private val imagePickerLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            pendingImageCoords?.let { (x, y) ->
+                viewModel.addImageElement(it.toString(), x, y)
+            }
+        }
+        pendingImageCoords = null
+        viewModel.setMode(ConceptMode.PAN_ZOOM)
+    }
+
+    private var onEditTitleRequested: (() -> Unit)? = null
+    private var onCloudSettingsRequested: (() -> Unit)? = null
+    private var onStyleSettingsRequested: (() -> Unit)? = null
+    private var onExportImageRequested: (() -> Unit)? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_detail, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_edit_title -> {
+                onEditTitleRequested?.invoke()
+                true
+            }
+            R.id.action_cloud_settings -> {
+                onCloudSettingsRequested?.invoke()
+                true
+            }
+            R.id.action_style_settings -> {
+                onStyleSettingsRequested?.invoke()
+                true
+            }
+            R.id.action_export_image -> {
+                onExportImageRequested?.invoke()
+                true
+            }
+            R.id.action_ui_toggle -> {
+                viewModel.toggleUiVisible()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,8 +120,21 @@ class ReFormationDetailFragment : Fragment() {
                                 ConceptScreen(
                                     viewModel = viewModel,
                                     onShowTextDialog = { x, y -> showTextInputDialog(x, y) },
+                                    onShowUrlDialog = { x, y -> showUrlInputDialog(x, y) },
+                                    onShowImagePicker = { x, y ->
+                                        pendingImageCoords = x to y
+                                        imagePickerLauncher.launch("image/*")
+                                    },
+                                    onDirectAddImage = {
+                                        pendingImageCoords = 100f to 100f
+                                        imagePickerLauncher.launch("image/*")
+                                    },
                                     onShowColorPicker = { /* Handled in Style Modal */ },
                                     onEditSelectedText = { element -> showEditTextViewDialog(element) },
+                                    onRegisterEditTitleAction = { onEditTitleRequested = it },
+                                    onRegisterCloudSettingsAction = { onCloudSettingsRequested = it },
+                                    onRegisterStyleSettingsAction = { onStyleSettingsRequested = it },
+                                    onRegisterExportImageAction = { onExportImageRequested = it },
                                     onNavigateToItem = { type, id ->
                                         val bundle = Bundle()
                                         when (type) {
@@ -78,7 +146,9 @@ class ReFormationDetailFragment : Fragment() {
                                                 bundle.putString("conceptId", id)
                                                 findNavController().navigate(R.id.action_ReFormationDetailFragment_to_ConceptFragment, bundle)
                                             }
-                                            else -> Toast.makeText(context, "Nav not impl for $type", Toast.LENGTH_SHORT).show()
+                                            "NOTE" -> {
+                                                Toast.makeText(context, "Note detail is currently handled in Note List", Toast.LENGTH_SHORT).show()
+                                            }
                                         }
                                     }
                                 )
@@ -99,6 +169,24 @@ class ReFormationDetailFragment : Fragment() {
                 val text = editText.text.toString()
                 if (text.isNotEmpty()) {
                     viewModel.addElement("TEXT", x, y, text)
+                }
+                viewModel.setMode(ConceptMode.PAN_ZOOM)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showUrlInputDialog(x: Float, y: Float) {
+        val editText = android.widget.EditText(requireContext()).apply {
+            hint = "https://example.com"
+        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Enter URL")
+            .setView(editText)
+            .setPositiveButton("OK") { _, _ ->
+                val url = editText.text.toString()
+                if (url.isNotEmpty()) {
+                    viewModel.addUrlElement(url, x, y)
                 }
                 viewModel.setMode(ConceptMode.PAN_ZOOM)
             }
