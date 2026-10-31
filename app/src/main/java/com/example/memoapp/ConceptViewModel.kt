@@ -60,6 +60,9 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
     private val _selectedElement = MutableStateFlow<CanvasElement?>(null)
     val selectedElement: StateFlow<CanvasElement?> = _selectedElement.asStateFlow()
 
+    private val _conceptTitle = MutableStateFlow<String>("")
+    val conceptTitle: StateFlow<String> = _conceptTitle.asStateFlow()
+
     private val _canPaste = MutableStateFlow(false)
     val canPaste: StateFlow<Boolean> = _canPaste.asStateFlow()
 
@@ -82,6 +85,13 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
 
     private val _isGridEnabled = MutableStateFlow(true)
     val isGridEnabled: StateFlow<Boolean> = _isGridEnabled.asStateFlow()
+
+    private val _isUiVisible = MutableStateFlow(true)
+    val isUiVisible: StateFlow<Boolean> = _isUiVisible.asStateFlow()
+
+    fun toggleUiVisible() {
+        _isUiVisible.value = !_isUiVisible.value
+    }
 
     private val _isLocalOnly = MutableStateFlow(false)
     val isLocalOnly: StateFlow<Boolean> = _isLocalOnly.asStateFlow()
@@ -119,9 +129,29 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
             fetchCanvasElements()
             fetchAvailableSymbols(currentUser.uid)
             fetchAvailableNotes(currentUser.uid)
-            fetchAvailableConcepts(currentUser.uid)
             fetchAvailableLogItems()
+            fetchAvailableConcepts(currentUser.uid)
+
+            val collectionName = if (isReFormation) "reformations" else "concepts"
+            if (conceptId.isNotEmpty()) {
+                db.collection(collectionName).document(conceptId).addSnapshotListener { doc, _ ->
+                    if (doc != null && doc.exists()) {
+                        _conceptTitle.value = doc.getString("title") ?: ""
+                    }
+                }
+            }
         }
+    }
+
+    fun updateConceptTitle(newTitle: String) {
+        val trimmed = newTitle.trim()
+        if (trimmed.isEmpty() || conceptId.isEmpty()) return
+        val collectionName = if (isReFormation) "reformations" else "concepts"
+        db.collection(collectionName).document(conceptId)
+            .update("title", trimmed, "updatedAt", System.currentTimeMillis())
+            .addOnSuccessListener {
+                _conceptTitle.value = trimmed
+            }
     }
 
     fun setActiveModal(type: ConceptModalType) {

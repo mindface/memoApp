@@ -47,6 +47,9 @@ class MeasurementViewModel(application: Application, savedStateHandle: SavedStat
     private val _selectedElementId = MutableStateFlow<String?>(null)
     val selectedElementId: StateFlow<String?> = _selectedElementId.asStateFlow()
 
+    private val _pageTitle = MutableStateFlow<String>("")
+    val pageTitle: StateFlow<String> = _pageTitle.asStateFlow()
+
     fun selectElementId(id: String?) {
         _selectedElementId.value = id
     }
@@ -95,7 +98,23 @@ class MeasurementViewModel(application: Application, savedStateHandle: SavedStat
             fetchAvailableNotes(currentUser.uid)
             fetchAvailableConcepts(currentUser.uid)
             fetchAvailableLogItems()
+
+            db.collection("measurements").document(measurementPageId).addSnapshotListener { doc, _ ->
+                if (doc != null && doc.exists()) {
+                    _pageTitle.value = doc.getString("title") ?: ""
+                }
+            }
         }
+    }
+
+    fun updateMeasurementTitle(newTitle: String) {
+        val trimmed = newTitle.trim()
+        if (trimmed.isEmpty() || measurementPageId.isEmpty()) return
+        db.collection("measurements").document(measurementPageId)
+            .update("title", trimmed, "updatedAt", System.currentTimeMillis())
+            .addOnSuccessListener {
+                _pageTitle.value = trimmed
+            }
     }
 
     fun setActiveModal(type: MeasurementModalType) {

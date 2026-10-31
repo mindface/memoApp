@@ -3,6 +3,9 @@ package com.example.memoapp
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
@@ -32,6 +35,47 @@ class ConceptFragment : Fragment() {
         viewModel.setMode(ConceptMode.PAN_ZOOM)
     }
 
+    private var onEditTitleRequested: (() -> Unit)? = null
+    private var onCloudSettingsRequested: (() -> Unit)? = null
+    private var onStyleSettingsRequested: (() -> Unit)? = null
+    private var onExportImageRequested: (() -> Unit)? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_detail, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_edit_title -> {
+                onEditTitleRequested?.invoke()
+                true
+            }
+            R.id.action_cloud_settings -> {
+                onCloudSettingsRequested?.invoke()
+                true
+            }
+            R.id.action_style_settings -> {
+                onStyleSettingsRequested?.invoke()
+                true
+            }
+            R.id.action_export_image -> {
+                onExportImageRequested?.invoke()
+                true
+            }
+            R.id.action_ui_toggle -> {
+                viewModel.toggleUiVisible()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -54,6 +98,10 @@ class ConceptFragment : Fragment() {
                         },
                         onShowColorPicker = { showColorPickerDialog() },
                         onEditSelectedText = { element -> showEditTextViewDialog(element) },
+                        onRegisterEditTitleAction = { onEditTitleRequested = it },
+                        onRegisterCloudSettingsAction = { onCloudSettingsRequested = it },
+                        onRegisterStyleSettingsAction = { onStyleSettingsRequested = it },
+                        onRegisterExportImageAction = { onExportImageRequested = it },
                         onNavigateToItem = { type, id ->
                             val bundle = Bundle()
                             when (type) {

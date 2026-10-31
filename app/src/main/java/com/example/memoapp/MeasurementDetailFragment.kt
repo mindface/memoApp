@@ -2,6 +2,9 @@ package com.example.memoapp
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.*
@@ -22,6 +25,27 @@ import com.example.memoapp.ui.measurement.MeasurementItemPickerModal
 class MeasurementDetailFragment : Fragment() {
 
     private val viewModel: MeasurementViewModel by viewModels()
+    private var onEditTitleRequested: (() -> Unit)? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_detail, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_edit_title -> {
+                onEditTitleRequested?.invoke()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,13 +64,60 @@ class MeasurementDetailFragment : Fragment() {
                 val availableLogItems by viewModel.availableLogItems.collectAsStateWithLifecycle()
                 val availableConcepts by viewModel.availableConcepts.collectAsStateWithLifecycle()
                 val selectedElementId by viewModel.selectedElementId.collectAsStateWithLifecycle()
+                val pageTitle by viewModel.pageTitle.collectAsStateWithLifecycle()
+                var showEditTitleDialog by remember { mutableStateOf(false) }
+                var editTitleText by remember { mutableStateOf(pageTitle) }
+
+                onEditTitleRequested = {
+                    showEditTitleDialog = true
+                }
+
+                LaunchedEffect(pageTitle) {
+                    editTitleText = pageTitle
+                }
+
+                if (showEditTitleDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showEditTitleDialog = false },
+                        title = { Text("測定プロジェクトタイトルの編集") },
+                        text = {
+                            OutlinedTextField(
+                                value = editTitleText,
+                                onValueChange = { editTitleText = it },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                if (editTitleText.isNotBlank()) {
+                                    viewModel.updateMeasurementTitle(editTitleText)
+                                }
+                                showEditTitleDialog = false
+                            }) {
+                                Text("保存")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showEditTitleDialog = false }) {
+                                Text("キャンセル")
+                            }
+                        }
+                    )
+                }
 
                 MaterialTheme {
+                    @OptIn(ExperimentalMaterial3Api::class)
                     Scaffold(
                         topBar = {
-                            TabRow(selectedTabIndex = selectedTabIndex) {
-                                Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Canvas") })
-                                Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Data Summary") })
+                            Column {
+                                TopAppBar(
+                                    title = { Text("") }
+                                )
+                                TabRow(selectedTabIndex = selectedTabIndex) {
+                                    Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Canvas") })
+                                    Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Data Summary") })
+                                }
                             }
                         },
                         floatingActionButton = {

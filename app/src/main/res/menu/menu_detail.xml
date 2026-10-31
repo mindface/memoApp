@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_edit_title"
+        android:title="タイトルを編集"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_cloud_settings"
+        android:title="クラウド・同期設定"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_style_settings"
+        android:title="表示・スタイル設定"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_export_image"
+        android:title="画像としてエクスポート"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_ui_toggle"
+        android:title="UIの表示/非表示"
+        app:showAsAction="never" />
+</menu>
