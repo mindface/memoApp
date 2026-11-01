@@ -112,7 +112,7 @@
         android:textAllCaps="false"
         android:textSize="11sp"
         app:cornerRadius="16dp"
-        app:icon="@android:drawable/ic_menu_info_details"
+        app:icon="@drawable/outline_app_registration_24"
         app:iconGravity="top"
         app:iconPadding="2dp"
         app:iconSize="28dp"

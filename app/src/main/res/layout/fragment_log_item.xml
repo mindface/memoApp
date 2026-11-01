@@ -39,7 +39,7 @@
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="詳細"
-            android:src="@android:drawable/ic_menu_info_details"
+            android:src="@drawable/baseline_call_made_24"
             app:tint="?attr/colorOnSurfaceVariant" />
 
         <Button

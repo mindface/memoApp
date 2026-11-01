@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.memoapp.ConceptMode
+import com.example.memoapp.R
 
 @Composable
 fun ConceptToolbar(
@@ -84,7 +85,7 @@ fun ConceptToolbar(
             Spacer(modifier = Modifier.width(8.dp))
 
             ToolbarButton(
-                iconRes = if (isGridEnabled) android.R.drawable.ic_menu_view else android.R.drawable.ic_menu_close_clear_cancel,
+                iconRes = if (isGridEnabled) R.drawable.outline_background_grid_small_24 else R.drawable.outline_background_dot_large_24,
                 contentDescription = "Toggle Grid",
                 isSelected = isGridEnabled,
                 onClick = onToggleGrid
