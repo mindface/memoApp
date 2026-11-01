@@ -106,6 +106,8 @@ fun ReFormationListScreen(
     val reformations by viewModel.reformations.collectAsState()
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(title = { Text("reFormation Projects") })
         },

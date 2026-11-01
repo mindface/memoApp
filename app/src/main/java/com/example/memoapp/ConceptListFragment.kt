@@ -103,6 +103,7 @@ fun ConceptListScreen(
     val concepts by viewModel.concepts.collectAsState()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(title = { Text("My Concepts") })
         },

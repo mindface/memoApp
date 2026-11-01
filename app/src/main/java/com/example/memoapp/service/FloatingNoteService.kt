@@ -67,7 +67,7 @@ class FloatingNoteService : Service() {
                 @Suppress("DEPRECATION")
                 WindowManager.LayoutParams.TYPE_PHONE
             },
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -252,14 +252,18 @@ fun FloatingNoteCard(
                     )
                 )
             } else {
-                Text(
-                    text = content,
-                    style = MaterialTheme.typography.bodySmall,
+                Box(
                     modifier = Modifier
                         .padding(12.dp)
                         .fillMaxWidth()
+                        .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
-                )
+                ) {
+                    com.example.memoapp.ui.components.ChecklistTextView(
+                        content = content.ifEmpty { "(本文がありません)" },
+                        onContentChange = onContentChange
+                    )
+                }
             }
         }
     }

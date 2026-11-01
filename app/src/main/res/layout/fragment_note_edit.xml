@@ -33,6 +33,15 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
+        <ImageButton
+            android:id="@+id/button_note_info"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="小窓"
+            android:src="@android:drawable/ic_menu_info_details"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
         <Button
             android:id="@+id/button_save_note"
             android:layout_width="wrap_content"
@@ -86,7 +95,7 @@
                 android:padding="16dp">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:id="@+id/layout_note_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:hintEnabled="false">

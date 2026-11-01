@@ -110,12 +110,9 @@ fun ConceptScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            if (isUiVisible) {
-                TopAppBar(
-                    title = { Text("") }
-                )
-            }
+            // 空のTopAppBarを削除し、ヘッダーの隙間を完全に解消
         },
         bottomBar = {
             if (isUiVisible) {

@@ -106,6 +106,7 @@ fun MeasurementListScreen(
     val pages by viewModel.measurementPages.collectAsState()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(title = { Text("Measurement Projects") })
         },
