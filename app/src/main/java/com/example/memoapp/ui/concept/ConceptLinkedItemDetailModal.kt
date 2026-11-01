@@ -1,18 +1,12 @@
 package com.example.memoapp.ui.concept
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,11 +18,13 @@ fun ConceptLinkedItemDetailModal(
     title: String,
     content: String,
     onOpenFullEditor: () -> Unit,
+    onContentChange: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    val lines = remember(content) { content.lines() }
+    var currentContent by remember(content) { mutableStateOf(content) }
+    val lines = remember(currentContent) { currentContent.lines() }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -45,7 +41,7 @@ fun ConceptLinkedItemDetailModal(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
                 Text(
                     text = title,
@@ -72,24 +68,26 @@ fun ConceptLinkedItemDetailModal(
                     .heightIn(min = 200.dp, max = 500.dp)
                     .padding(16.dp)
             ) {
-                // Main Text Content
+                // Main Text Content with Checklist support
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                         .verticalScroll(scrollState)
                 ) {
-                    Text(
-                        text = content.ifEmpty { "(内容がありません)" },
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontSize = 18.sp
+                    com.example.memoapp.ui.components.ChecklistTextView(
+                        content = currentContent.ifEmpty { "(内容がありません)" },
+                        onContentChange = { updated ->
+                            currentContent = updated
+                            onContentChange?.invoke(updated)
+                        }
                     )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // Side Line Overview Minimap Bar with Tooltip
-                com.example.memoapp.ui.components.ScrollbarWithTooltip(
+                com.example.memoapp.ui.components.ScrollbarWithJumpModal(
                     lines = lines,
                     onJumpToLine = { index ->
                         if (lines.isNotEmpty()) {

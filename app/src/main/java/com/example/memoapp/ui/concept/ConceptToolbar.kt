@@ -54,12 +54,6 @@ fun ConceptToolbar(
                 onClick = { onModeChange(ConceptMode.ADD_CIRCLE) }
             )
             ToolbarButton(
-                iconRes = android.R.drawable.ic_menu_send,
-                contentDescription = "Add Arrow",
-                isSelected = currentMode == ConceptMode.ADD_ARROW,
-                onClick = { onModeChange(ConceptMode.ADD_ARROW) }
-            )
-            ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_edit,
                 contentDescription = "Add Text",
                 isSelected = currentMode == ConceptMode.ADD_TEXT,
