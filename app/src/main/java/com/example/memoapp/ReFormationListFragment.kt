@@ -109,7 +109,10 @@ fun ReFormationListScreen(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(title = { Text("reFormation Projects") })
+            TopAppBar(
+                title = { Text("reFormation Projects") },
+                windowInsets = WindowInsets(0, 0, 0, 0)
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {

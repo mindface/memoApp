@@ -54,6 +54,7 @@ class FloatingNoteService : Service() {
         return START_NOT_STICKY
     }
 
+    @Suppress("DEPRECATION")
     private fun showFloatingWindow(logItemId: String, title: String, content: String) {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val repository = com.example.memoapp.LogItemRepository(applicationContext)
@@ -67,7 +68,10 @@ class FloatingNoteService : Service() {
                 @Suppress("DEPRECATION")
                 WindowManager.LayoutParams.TYPE_PHONE
             },
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START

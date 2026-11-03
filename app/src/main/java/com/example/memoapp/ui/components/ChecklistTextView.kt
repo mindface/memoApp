@@ -18,8 +18,42 @@ fun ChecklistTextView(
     modifier: Modifier = Modifier
 ) {
     val lines = remember(content) { content.lines() }
+    val hasCheckboxes = remember(lines) {
+        lines.any { line ->
+            val trimmed = line.trimStart()
+            trimmed.startsWith("- [x]") || trimmed.startsWith("[x]") || trimmed.startsWith("- [X]") || trimmed.startsWith("[X]") ||
+            trimmed.startsWith("- [ ]") || trimmed.startsWith("[ ]")
+        }
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        if (hasCheckboxes && onContentChange != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val resetLines = lines.map { line ->
+                            var l = line
+                            l = l.replace("- [x]", "- [ ]")
+                            l = l.replace("[x]", "[ ]")
+                            l = l.replace("- [X]", "- [ ]")
+                            l = l.replace("[X]", "[ ]")
+                            l
+                        }
+                        onContentChange(resetLines.joinToString("\n"))
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("リセット (全て未完了)", fontSize = 11.sp)
+                }
+            }
+        }
+
         lines.forEachIndexed { index, line ->
             val trimmed = line.trimStart()
             val isChecked = trimmed.startsWith("- [x]") || trimmed.startsWith("[x]") || trimmed.startsWith("- [X]") || trimmed.startsWith("[X]")

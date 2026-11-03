@@ -105,7 +105,10 @@ fun ConceptListScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(title = { Text("My Concepts") })
+            TopAppBar(
+                title = { Text("My Concepts") },
+                windowInsets = WindowInsets(0, 0, 0, 0)
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {

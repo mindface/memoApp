@@ -108,7 +108,10 @@ fun MeasurementListScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(title = { Text("Measurement Projects") })
+            TopAppBar(
+                title = { Text("Measurement Projects") },
+//                windowInsets = WindowInsets(0, 0, 0, 0)
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {
