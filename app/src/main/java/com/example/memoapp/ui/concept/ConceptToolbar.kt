@@ -20,6 +20,7 @@ fun ConceptToolbar(
     isReFormation: Boolean,
     onModeChange: (ConceptMode) -> Unit,
     onAddImageClick: () -> Unit,
+    onFitToScreen: () -> Unit,
     onToggleGrid: () -> Unit,
     onSaveLocal: () -> Unit,
     onSaveFirebase: () -> Unit,
@@ -83,6 +84,12 @@ fun ConceptToolbar(
             Spacer(modifier = Modifier.width(8.dp))
             Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.LightGray))
             Spacer(modifier = Modifier.width(8.dp))
+
+            ToolbarButton(
+                iconRes = android.R.drawable.ic_menu_mapmode,
+                contentDescription = "Fit to Screen",
+                onClick = onFitToScreen
+            )
 
             ToolbarButton(
                 iconRes = if (isGridEnabled) R.drawable.outline_background_grid_small_24 else R.drawable.outline_background_dot_large_24,

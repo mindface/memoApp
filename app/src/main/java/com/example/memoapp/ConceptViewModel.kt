@@ -719,6 +719,29 @@ class ConceptViewModel(application: Application, savedStateHandle: SavedStateHan
         }
     }
 
+    fun fitToScreen(canvasWidth: Float, canvasHeight: Float) {
+        if (elements.isEmpty() || canvasWidth <= 0f || canvasHeight <= 0f) return
+
+        val minX = elements.minOf { it.x }
+        val maxX = elements.maxOf { it.x + it.width }
+        val minY = elements.minOf { it.y }
+        val maxY = elements.maxOf { it.y + it.height }
+
+        val boxW = (maxX - minX).coerceAtLeast(100f)
+        val boxH = (maxY - minY).coerceAtLeast(100f)
+
+        val padding = 100f
+        val scaleX = canvasWidth / (boxW + padding * 2)
+        val scaleY = canvasHeight / (boxH + padding * 2)
+        val newScale = minOf(scaleX, scaleY).coerceIn(0.2f, 3.0f)
+
+        val newOffsetX = (canvasWidth - boxW * newScale) / 2f - minX * newScale
+        val newOffsetY = (canvasHeight - boxH * newScale) / 2f - minY * newScale
+
+        _viewScale.value = newScale
+        _viewOffset.value = Offset(newOffsetX, newOffsetY)
+    }
+
     fun saveCanvasElements(context: Context) {
         // Redirect legacy save to local-only for safety, or prompt user.
         // Given the request, we'll make this a dual-save or just keep it for internal use.

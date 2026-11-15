@@ -6,7 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.memoapp.ConceptMode
@@ -46,6 +48,7 @@ fun ConceptScreen(
     val quickColors = viewModel.quickColors
     val context = androidx.compose.ui.platform.LocalContext.current
     val isReFormation = viewModel.isReFormation
+    var canvasSize by remember { mutableStateOf(Size.Zero) }
 
     // 保存・エクスポート結果のトースト表示
     LaunchedEffect(Unit) {
@@ -145,6 +148,7 @@ fun ConceptScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(Color(0xFFF5F5F5))
+                .onSizeChanged { canvasSize = Size(it.width.toFloat(), it.height.toFloat()) }
         ) {
             ConceptCanvas(
                 elements = elements,
@@ -181,6 +185,7 @@ fun ConceptScreen(
                     isReFormation = isReFormation,
                     onModeChange = { viewModel.setMode(it) },
                     onAddImageClick = onDirectAddImage,
+                    onFitToScreen = { viewModel.fitToScreen(canvasSize.width, canvasSize.height) },
                     onToggleGrid = { viewModel.toggleGrid() },
                     onSaveLocal = { viewModel.saveLocalOnly(context) },
                     onSaveFirebase = { viewModel.saveToFirebase(context) },
