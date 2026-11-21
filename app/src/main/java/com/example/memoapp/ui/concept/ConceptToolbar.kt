@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.memoapp.ConceptMode
+import com.example.memoapp.R
 
 @Composable
 fun ConceptToolbar(
@@ -19,6 +20,7 @@ fun ConceptToolbar(
     isReFormation: Boolean,
     onModeChange: (ConceptMode) -> Unit,
     onAddImageClick: () -> Unit,
+    onFitToScreen: () -> Unit,
     onToggleGrid: () -> Unit,
     onSaveLocal: () -> Unit,
     onSaveFirebase: () -> Unit,
@@ -54,12 +56,6 @@ fun ConceptToolbar(
                 onClick = { onModeChange(ConceptMode.ADD_CIRCLE) }
             )
             ToolbarButton(
-                iconRes = android.R.drawable.ic_menu_send,
-                contentDescription = "Add Arrow",
-                isSelected = currentMode == ConceptMode.ADD_ARROW,
-                onClick = { onModeChange(ConceptMode.ADD_ARROW) }
-            )
-            ToolbarButton(
                 iconRes = android.R.drawable.ic_menu_edit,
                 contentDescription = "Add Text",
                 isSelected = currentMode == ConceptMode.ADD_TEXT,
@@ -90,7 +86,13 @@ fun ConceptToolbar(
             Spacer(modifier = Modifier.width(8.dp))
 
             ToolbarButton(
-                iconRes = if (isGridEnabled) android.R.drawable.ic_menu_view else android.R.drawable.ic_menu_close_clear_cancel,
+                iconRes = android.R.drawable.ic_menu_mapmode,
+                contentDescription = "Fit to Screen",
+                onClick = onFitToScreen
+            )
+
+            ToolbarButton(
+                iconRes = if (isGridEnabled) R.drawable.outline_background_grid_small_24 else R.drawable.outline_background_dot_large_24,
                 contentDescription = "Toggle Grid",
                 isSelected = isGridEnabled,
                 onClick = onToggleGrid

@@ -1,6 +1,10 @@
 package com.example.memoapp
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -62,6 +66,7 @@ class NoteFragment : Fragment() {
 
         binding.buttonSaveNote.setOnClickListener { saveNote() }
         binding.buttonCancelNote.setOnClickListener { findNavController().navigateUp() }
+        binding.buttonNoteInfo.setOnClickListener { checkOverlayPermissionAndStart() }
     }
 
     private fun setupMinimap() {
@@ -81,6 +86,33 @@ class NoteFragment : Fragment() {
                 modifier = Modifier.fillMaxHeight()
             )
         }
+    }
+
+    private fun checkOverlayPermissionAndStart() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(requireContext())) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${requireContext().packageName}")
+            )
+            startActivity(intent)
+            Toast.makeText(context, "他のアプリの上に重ねて表示を許可してください", Toast.LENGTH_LONG).show()
+        } else {
+            startFloatingNote()
+        }
+    }
+
+    private fun startFloatingNote() {
+        val title = binding.editNoteTitle.text.toString()
+        val content = binding.editNoteContent.text.toString()
+        val id = existingNote?.id ?: ""
+        
+        val intent = Intent(requireContext(), com.example.memoapp.service.FloatingNoteService::class.java).apply {
+            putExtra("id", id)
+            putExtra("title", title)
+            putExtra("content", content)
+        }
+        requireContext().startService(intent)
+        Toast.makeText(context, "小窓モードで起動しました", Toast.LENGTH_SHORT).show()
     }
 
     private fun saveNote() {

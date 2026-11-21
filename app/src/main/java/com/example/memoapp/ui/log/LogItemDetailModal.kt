@@ -1,21 +1,16 @@
 package com.example.memoapp.ui.log
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,11 +23,12 @@ fun LogItemDetailModal(
     onShareExternally: () -> Unit,
     onPopOut: () -> Unit,
     onCopy: (String) -> Unit,
+    onContentChange: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    val lines = remember(noteContent) { noteContent.lines() }
+    var currentContent by remember(noteContent) { mutableStateOf(noteContent) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -50,7 +46,7 @@ fun LogItemDetailModal(
                 modifier = Modifier.padding(16.dp)
             )
 
-            // Content Preview with Minimap
+            // Content Preview with Minimap & Interactive Checklist support
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -65,51 +61,31 @@ fun LogItemDetailModal(
                         .padding(8.dp)
                         .verticalScroll(scrollState)
                 ) {
-                    Text(
-                        text = noteContent.ifEmpty { "(本文がありません)" },
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontSize = 16.sp
+                    com.example.memoapp.ui.components.ChecklistTextView(
+                        content = currentContent.ifEmpty { "(本文がありません)" },
+                        onContentChange = { updated ->
+                            currentContent = updated
+                            onContentChange?.invoke(updated)
+                        }
                     )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Box(
-                    modifier = Modifier
-                        .width(36.dp)
-                        .fillMaxHeight()
-                        .background(Color(0xFFF0F0F0), shape = MaterialTheme.shapes.small)
-                        .pointerInput(lines) {
-                            detectTapGestures { tapOffset ->
-                                if (lines.isNotEmpty()) {
-                                    val ratio = (tapOffset.y / size.height).coerceIn(0f, 1f)
-                                    val targetScroll = (scrollState.maxValue * ratio).toInt()
-                                    coroutineScope.launch {
-                                        scrollState.animateScrollTo(targetScroll)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(4.dp)
-                ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
+                com.example.memoapp.ui.components.ScrollbarWithJumpModal(
+                    lines = currentContent.lines(),
+                    onJumpToLine = { index ->
+                        val lines = currentContent.lines()
                         if (lines.isNotEmpty()) {
-                            val lineSpacing = size.height / lines.size.coerceAtLeast(1)
-                            lines.forEachIndexed { index, line ->
-                                if (line.isNotBlank()) {
-                                    val y = index * lineSpacing
-                                    val lineWidth = (size.width * (line.length.toFloat() / 50f).coerceIn(0.2f, 0.9f))
-                                    drawLine(
-                                        color = Color.DarkGray,
-                                        start = Offset(4f, y + 2f),
-                                        end = Offset(4f + lineWidth, y + 2f),
-                                        strokeWidth = 3f
-                                    )
-                                }
+                            val ratio = index.toFloat() / lines.size.coerceAtLeast(1)
+                            val targetScroll = (scrollState.maxValue * ratio).toInt()
+                            coroutineScope.launch {
+                                scrollState.animateScrollTo(targetScroll)
                             }
                         }
-                    }
-                }
+                    },
+                    modifier = Modifier.fillMaxHeight()
+                )
             }
 
             // Actions Group
@@ -120,7 +96,7 @@ fun LogItemDetailModal(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedButton(
-                    onClick = { onCopy(noteContent) },
+                    onClick = { onCopy(currentContent) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(painter = painterResource(id = android.R.drawable.ic_menu_edit), contentDescription = null)
