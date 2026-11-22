@@ -26,7 +26,7 @@
 * **ナビゲーション**: 記事やノートの詳細・編集画面は、ポップアップモーダルではなく専用のフルスクリーンエディタ Fragment（例: `NoteFragment`, `LogItemFragment`）として一貫させます。
 
 ### ③ ナビゲーション補助 (Minimap & Scrollbar)
-* **方針**: 長文エディタや詳細ビューには、サイドの縦型スクロールバーと連動した「2段階ジャンプモーダル（`ScrollbarWithJumpModal`）」や「ラインベースのチェックリスト（`ChecklistTextView`）」を配置し、操作性を高めます。
+* **方針**: 長文エディタや詳細ビューには、サイドの縦型スクロールバーと連動した「2段階ジャンプモーダル（`ScrollbarWithJumpModal`）」やパートナーとしての「ラインベースのチェックリスト（`ChecklistTextView`）」を配置し、操作性を高めます。
 
 ---
 
@@ -35,3 +35,14 @@
 * **Kotlin ＆ Coroutines**: 非同期処理や状態管理には Kotlin Coroutines および `StateFlow` / `collectAsStateWithLifecycle` を使用します。
 * **堅牢なエラーハンドリング**: ローカルファイル（JSON/Markdown）のパース時には必ず `try-catch` や `runCatching` を用い、古いキャッシュスキーマによるアプリクラッシュ（`JsonSyntaxException` 等）を確実に防ぎます。
 * **画面常時点灯（Keep Screen On）**: 常時確認が必要なTODOやフローティング小窓では `FLAG_KEEP_SCREEN_ON` を適用し、利便性を向上させます。
+
+---
+
+## 4. 時間経過と通知機能 (Elapsed Time & Notification Features)
+
+### ① バックグラウンド時間経過のトラッキング
+* **方針**: タスクやTODO、計測データの経過時間（タイマーや経過日数・時間）を正確にトラッキングするため、バックグラウンド状態やサービス（Foreground Service / WorkManager）を活用した状態維持を設計します。
+
+### ② 常時通知・アラート機能
+* **方針**: 重要な時間経過や期限を迎えたタスクに対して、システム通知やフローティング小窓を通じてタイムリーにユーザーへ通知・アラートを届けます。
+* **実装**: `FloatingNoteService` やシステム通知チャンネルを利用し、アプリが閉じられている状態やロック画面（`FLAG_SHOW_WHEN_LOCKED`）でも視認性を確保します。

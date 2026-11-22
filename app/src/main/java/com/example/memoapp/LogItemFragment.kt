@@ -11,9 +11,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
@@ -21,10 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.memoapp.databinding.FragmentLogItemBinding
@@ -85,6 +78,7 @@ class LogItemFragment : Fragment() {
         binding.buttonSaveLogItem.setOnClickListener { saveLogItem() }
         binding.buttonCancelLogItem.setOnClickListener { findNavController().navigateUp() }
         binding.buttonLogItemInfo.setOnClickListener { showModal = true }
+        binding.buttonLogItemTimer.setOnClickListener { checkOverlayPermissionAndStartTimer() }
 
         setupModal()
     }
@@ -121,12 +115,17 @@ class LogItemFragment : Fragment() {
                     onSymbolize = { symbolizeCurrentNote() },
                     onShareExternally = { shareExternally() },
                     onPopOut = { checkOverlayPermissionAndStart() },
+                    onTimer = { checkOverlayPermissionAndStartTimer() },
                     onCopy = { text ->
                         val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         val clip = android.content.ClipData.newPlainText("note", text)
                         clipboard.setPrimaryClip(clip)
                         Toast.makeText(context, "コピーしました", Toast.LENGTH_SHORT).show()
                         showModal = false
+                    },
+                    onContentChange = { updated ->
+                        binding.editLogItemContent.setText(updated)
+                        editorContentText = updated
                     },
                     onDismiss = { showModal = false }
                 )
@@ -147,6 +146,19 @@ class LogItemFragment : Fragment() {
         }
     }
 
+    private fun checkOverlayPermissionAndStartTimer() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(requireContext())) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${requireContext().packageName}")
+            )
+            startActivity(intent)
+            Toast.makeText(context, "他のアプリの上に重ねて表示を許可してください", Toast.LENGTH_LONG).show()
+        } else {
+            startFloatingTimer()
+        }
+    }
+
     private fun startFloatingNote() {
         val title = binding.editLogItemTitle.text.toString()
         val content = binding.editLogItemContent.text.toString()
@@ -158,6 +170,18 @@ class LogItemFragment : Fragment() {
             putExtra("content", content)
         }
         requireContext().startService(intent)
+        showModal = false
+    }
+
+    private fun startFloatingTimer() {
+        val title = binding.editLogItemTitle.text.toString().ifBlank { "作業タイマー" }
+        val targetMin = existingItem?.targetMinutes ?: 0
+        val intent = Intent(requireContext(), com.example.memoapp.service.FloatingTimerService::class.java).apply {
+            putExtra("title", title)
+            putExtra("targetMinutes", targetMin)
+        }
+        requireContext().startService(intent)
+        Toast.makeText(context, "タイマー小窓で起動しました", Toast.LENGTH_SHORT).show()
         showModal = false
     }
 
@@ -246,34 +270,39 @@ class LogItemFragment : Fragment() {
             return
         }
 
-        binding.buttonSaveLogItem.isEnabled = false
+        buttonSaveLogItemState(false)
         Thread {
             val result = runCatching {
                 val item = existingItem
                 if (item != null) {
                     val updated = item.copy(
+                        item.id,
                         title = title,
                         content = content,
-                        isShared = isSharedState,
                         updatedAt = System.currentTimeMillis().toString()
                     )
                     repository.save(updated)
                     updated
                 } else {
-                    val created = repository.create(title, content)
-                    created.copy(isShared = isSharedState).also { repository.save(it) }
+                    repository.create(title, content)
                 }
             }
             activity?.runOnUiThread {
-                binding.buttonSaveLogItem.isEnabled = true
+                buttonSaveLogItemState(true)
                 result.onSuccess {
                     Toast.makeText(requireContext(), "保存しました", Toast.LENGTH_SHORT).show()
                     findNavController().navigateUp()
                 }.onFailure {
-                    Toast.makeText(requireContext(), "保存に失敗しました: ${it.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "保存に失敗しました", Toast.LENGTH_SHORT).show()
                 }
             }
         }.start()
+    }
+
+    private fun buttonSaveLogItemState(enabled: Boolean) {
+        if (_binding != null) {
+            binding.buttonSaveLogItem.isEnabled = enabled
+        }
     }
 
     override fun onDestroyView() {

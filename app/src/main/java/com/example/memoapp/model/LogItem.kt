@@ -7,5 +7,7 @@ data class LogItem(
     val content: String,
     val createdAt: String,
     val updatedAt: String,
-    val isShared: Boolean = false
+    val isShared: Boolean = false,
+    val targetMinutes: Int = 0,
+    val elapsedSeconds: Long = 0L
 )

@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,6 +23,7 @@ fun LogItemDetailModal(
     onSymbolize: () -> Unit,
     onShareExternally: () -> Unit,
     onPopOut: () -> Unit,
+    onTimer: () -> Unit,
     onCopy: (String) -> Unit,
     onContentChange: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
@@ -93,24 +95,33 @@ fun LogItemDetailModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = { onCopy(currentContent) },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_edit), contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("コピー")
+                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_edit), contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("コピー", fontSize = 12.sp)
                 }
                 
+                OutlinedButton(
+                    onClick = onTimer,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_recent_history), contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("タイマー", fontSize = 12.sp)
+                }
+
                 Button(
                     onClick = { onPopOut() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_slideshow), contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("小窓")
+                    Icon(painter = painterResource(id = android.R.drawable.ic_menu_slideshow), contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("小窓", fontSize = 12.sp)
                 }
             }
 
